@@ -1,0 +1,2238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PYLSA Acero — Buscar proveedores</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --charcoal:#1F2428; --steel:#3D4C5C; --steel-light:#5A6E82; --ember:#C1502E;
+    --paper:#F5F3EE; --slate:#6B7280; --line:#D8D3C8; --white:#FFFFFF; --danger:#B3261E;
+    --verde:#2E7D32; --verde-bg:#E3F1E4; --ambar:#9A6700; --ambar-bg:#FFF3D1; --rojo:#B3261E; --rojo-bg:#F8DDD7;
+    --wa:#1FA855;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper);font-family:'Inter',sans-serif;color:var(--charcoal);min-height:100vh;display:flex;justify-content:center;padding:24px 16px 64px;}
+  .app{width:100%;max-width:680px;}
+  .card{background:var(--white);border:1px solid var(--line);position:relative;}
+  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,var(--steel) 0%,var(--steel) 70%,var(--ember) 70%,var(--ember) 100%);}
+  .plate{background:var(--charcoal);color:var(--paper);padding:26px 28px 20px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px;}
+  .plate h1{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;letter-spacing:.02em;margin:0 0 4px;text-transform:uppercase;}
+  .plate p{margin:0;font-size:13px;color:#B8C2CC;}
+  .demo{background:#FFF4D6;border-bottom:1px solid #E8D28A;color:#6B5310;font-size:12px;padding:8px 28px;}
+  .cuerpo{padding:24px 28px 28px;}
+  h2{font-family:'Oswald',sans-serif;font-size:16px;text-transform:uppercase;letter-spacing:.03em;margin:0 0 16px;color:var(--steel);border-left:3px solid var(--ember);padding-left:10px;}
+  label.lbl{display:block;font-size:13px;font-weight:600;margin-bottom:6px;}
+  .field{margin-bottom:16px;}
+  input[type=text],input[type=password],select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);background:var(--paper);font-family:'Inter',sans-serif;font-size:15px;color:var(--charcoal);border-radius:2px;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--steel);background:var(--white);}
+  textarea{resize:vertical;min-height:70px;}
+  .hint{font-size:12px;color:var(--slate);margin-top:5px;}
+  .error-msg{color:var(--danger);font-size:12px;margin-top:5px;display:none;}
+  .field.error .error-msg{display:block;}
+  .field.error input,.field.error select{border-color:var(--danger);}
+  .opciones{display:flex;flex-wrap:wrap;gap:8px;}
+  .opcion{position:relative;}
+  .opcion input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer;}
+  .opcion span{display:block;padding:9px 14px;border:1px solid var(--line);font-size:13px;font-weight:500;color:var(--steel);border-radius:2px;background:var(--white);}
+  .opcion input:checked + span{background:var(--steel);border-color:var(--steel);color:var(--white);}
+  .opcion input:disabled + span{opacity:.45;}
+  .opcion input:focus-visible + span{outline:2px solid var(--ember);outline-offset:2px;}
+  .field.error .opcion span{border-color:var(--danger);}
+  button{font-family:'Oswald',sans-serif;font-size:13px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;padding:12px 20px;border:none;border-radius:2px;cursor:pointer;}
+  .btn-main{background:var(--charcoal);color:var(--white);width:100%;padding:14px;}
+  .btn-main:hover{background:var(--steel);}
+  .resultados-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:26px 0 12px;flex-wrap:wrap;}
+  .resultados-head h3{font-family:'Oswald',sans-serif;font-size:15px;text-transform:uppercase;letter-spacing:.03em;margin:0;}
+  .resultados-head span{font-size:12px;color:var(--slate);}
+  .leyenda{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--slate);margin-bottom:14px;}
+  .leyenda i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px;}
+  .tec{border:1px solid var(--line);border-left:5px solid var(--line);background:var(--white);padding:16px 16px 14px;margin-bottom:12px;}
+  .tec.verde{border-left-color:var(--verde);} .tec.amarillo{border-left-color:#E0A800;} .tec.rojo{border-left-color:var(--rojo);}
+  .tec-top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:4px 8px;border-radius:2px;}
+  .chip.verde{background:var(--verde-bg);color:var(--verde);} .chip.amarillo{background:var(--ambar-bg);color:var(--ambar);} .chip.rojo{background:var(--rojo-bg);color:var(--rojo);}
+  .chip.apto{background:var(--steel);color:#fff;} .chip.pend{background:var(--paper);color:var(--slate);border:1px solid var(--line);} .chip.noapto{background:var(--rojo);color:#fff;}
+  .tec h4{font-family:'Oswald',sans-serif;font-size:17px;font-weight:600;margin:0 0 2px;letter-spacing:.01em;}
+  .tec .sub{font-size:13px;color:var(--slate);margin-bottom:10px;}
+  .stats{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;margin-bottom:8px;}
+  .stats b{font-weight:700;}
+  .stats .estrellas{color:#C98A00;letter-spacing:1px;}
+  .sin-calif{font-size:13px;color:var(--slate);font-style:italic;margin-bottom:8px;}
+  .falta{font-size:13px;background:var(--ambar-bg);color:#6B4A00;padding:7px 10px;margin-bottom:8px;}
+  .falta.r{background:var(--rojo-bg);color:var(--rojo);}
+  .ultimo{font-size:13px;color:var(--steel);border-left:2px solid var(--line);padding-left:10px;margin:8px 0;}
+  .ultimo small{display:block;color:var(--slate);font-size:11px;margin-top:2px;}
+  .acciones{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;}
+  .btn-wa{background:var(--wa);color:#fff;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;font-family:'Oswald',sans-serif;font-size:13px;letter-spacing:.05em;text-transform:uppercase;font-weight:600;padding:12px;border-radius:2px;}
+  .btn-calif{background:var(--white);color:var(--charcoal);border:1px solid var(--charcoal);}
+  .btn-detalle{grid-column:1/-1;background:transparent;color:var(--steel);border:1px dashed var(--line);font-family:'Inter',sans-serif;text-transform:none;letter-spacing:0;font-weight:600;font-size:13px;padding:9px;}
+  .detalle{display:none;margin-top:12px;border-top:1px solid var(--line);padding-top:12px;font-size:13px;}
+  .detalle.abierto{display:block;}
+  .detalle h5{font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ember);margin:14px 0 6px;}
+  .detalle h5:first-child{margin-top:0;}
+  .detalle table{width:100%;border-collapse:collapse;}
+  .detalle td{padding:5px 0;border-bottom:1px solid #EEEAE2;vertical-align:top;}
+  .detalle td:first-child{color:var(--slate);width:42%;padding-right:8px;}
+  .trabajo{background:var(--paper);padding:10px 12px;margin-bottom:8px;}
+  .trabajo b{display:block;margin-bottom:2px;}
+  .trabajo a{color:var(--steel);font-weight:600;}
+  .hist{padding:8px 0;border-bottom:1px solid #EEEAE2;}
+  .hist small{color:var(--slate);}
+  .otros{margin-top:18px;}
+  .otros > button{width:100%;background:var(--paper);color:var(--slate);border:1px solid var(--line);font-family:'Inter',sans-serif;text-transform:none;letter-spacing:0;font-size:13px;}
+  .otros-lista{display:none;margin-top:12px;}
+  .otros-lista.abierto{display:block;}
+  .vacio{text-align:center;padding:28px 12px;color:var(--slate);font-size:14px;border:1px dashed var(--line);}
+  .vacio button{margin-top:12px;background:var(--ember);color:#fff;}
+  /* Modal */
+  .modal-fondo{position:fixed;inset:0;background:rgba(31,36,40,.55);display:none;align-items:flex-end;justify-content:center;z-index:20;}
+  .modal-fondo.abierto{display:flex;}
+  .modal{background:var(--white);width:100%;max-width:560px;max-height:92vh;overflow-y:auto;padding:22px 22px 26px;border-top:6px solid var(--ember);}
+  .modal h3{font-family:'Oswald',sans-serif;font-size:17px;text-transform:uppercase;margin:0 0 2px;}
+  .modal .para{font-size:13px;color:var(--slate);margin-bottom:18px;}
+  .stars{display:flex;gap:6px;}
+  .stars button{background:var(--paper);border:1px solid var(--line);font-size:22px;line-height:1;padding:8px 10px;color:#C9C3B6;font-family:inherit;}
+  .stars button.on{color:#E0A800;border-color:#E0A800;background:#FFF8E1;}
+  .modal-acciones{display:flex;gap:10px;margin-top:20px;}
+  .modal-acciones button{flex:1;}
+  .btn-cancel{background:transparent;color:var(--slate);border:1px solid var(--line);}
+  .btn-guardar{background:var(--ember);color:#fff;}
+  .validar-box{background:#FFF3D1;border:1px solid #E8C35A;padding:10px 12px;margin:8px 0;font-size:13px;color:#5C4300;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;}
+  .validar-box b{display:block;font-size:13px;}
+  .btn-validar{background:var(--ember);color:#fff;padding:9px 14px;}
+  .validado-por{font-size:12px;color:var(--slate);margin:-4px 0 8px;}
+  .ref-val{border:1px solid var(--line);padding:12px;margin-bottom:10px;background:var(--paper);}
+  .ref-val b{display:block;font-size:14px;}
+  .ref-val .tel{display:inline-flex;align-items:center;gap:6px;margin:6px 0 8px;font-weight:700;color:var(--steel);text-decoration:none;border:1px solid var(--steel);padding:7px 12px;background:var(--white);font-size:14px;}
+  .ref-val small{display:block;color:var(--slate);font-size:12px;margin-bottom:8px;}
+  .ref-val.error{border-color:var(--danger);}
+  .ref-val .opciones .opcion span{font-size:12px;padding:7px 10px;}
+  .paso-val{font-family:'Oswald',sans-serif;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--ember);margin:4px 0 10px;}
+  .aviso-val{font-size:12px;color:var(--danger);margin-top:6px;display:none;}
+  .aviso-val.on{display:block;}
+  .toast{pointer-events:none;position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--charcoal);color:#fff;font-size:13px;padding:12px 16px;max-width:92vw;opacity:0;transition:all .25s ease;z-index:30;border-left:4px solid var(--verde);}
+  .toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast.alerta{border-left-color:var(--ember);}
+  @media (min-width:640px){ .modal-fondo{align-items:center;} }
+  @media (max-width:520px){
+    body{padding:0 0 48px;}
+    .plate{padding:22px 16px 16px;}
+    .demo{padding:8px 16px;}
+    .cuerpo{padding:20px 16px 24px;}
+    .card{border-left:none;border-right:none;}
+  }
+  @media (prefers-reduced-motion: reduce){ .toast{transition:none;} }
+</style>
+</head>
+<body>
+<div class="app">
+<div class="card">
+  <div class="plate">
+    <div><h1>PYLSA Acero</h1><p>Buscador de proveedores y técnicos</p></div>
+  </div>
+  <div class="demo" id="bannerDemo">Demo con proveedores ficticios: los nombres, empresas y teléfonos son inventados. Nada de lo que hagas aquí se guarda.</div>
+
+  <!-- BUSCADOR -->
+  <section class="cuerpo" id="vistaBuscar">
+    <h2>¿Qué necesitas?</h2>
+    <div class="field" id="fSucursal">
+      <label class="lbl" for="selSucursal">Sucursal</label>
+      <select id="selSucursal"><option value="">Selecciona…</option></select>
+      <div class="error-msg">Selecciona una sucursal</div>
+    </div>
+    <div class="field">
+      <label class="lbl">Tipo de proveedor</label>
+      <div class="opciones">
+        <label class="opcion"><input type="radio" name="giro" value="Grúas" checked><span>🏗️ Grúas</span></label>
+        <label class="opcion"><input type="radio" name="giro" value="Techos" disabled><span>🏠 Techos · pronto</span></label>
+        <label class="opcion"><input type="radio" name="giro" value="Electricidad" disabled><span>⚡ Electricidad · pronto</span></label>
+        <label class="opcion"><input type="radio" name="giro" value="Herrería" disabled><span>🔩 Herrería · pronto</span></label>
+      </div>
+    </div>
+    <button class="btn-main" id="btnBuscar">Buscar</button>
+
+    <div id="resultados"></div>
+  </section>
+</div>
+</div>
+
+<!-- MODAL VALIDAR -->
+<div class="modal-fondo" id="modalVal" role="dialog" aria-modal="true" aria-labelledby="vTitulo">
+  <div class="modal">
+    <h3 id="vTitulo">Validar técnico</h3>
+    <div class="para" id="vPara"></div>
+    <div class="paso-val">1 · Llama a sus referencias</div>
+    <div id="vRefs"></div>
+    <div class="paso-val" style="margin-top:18px;">2 · ¿Es apto para trabajar con PYLSA?</div>
+    <div class="field" id="vfDecision">
+      <div class="opciones" style="flex-direction:column;">
+        <label class="opcion"><input type="radio" name="vDecision" value="APTO"><span>✔ Sí, es apto</span></label>
+        <label class="opcion"><input type="radio" name="vDecision" value="NO APTO"><span>✘ No es apto</span></label>
+        <label class="opcion"><input type="radio" name="vDecision" value="PENDIENTE"><span>⏳ Todavía no (no pude confirmar)</span></label>
+      </div>
+      <div class="error-msg">Selecciona una opción</div>
+      <div class="aviso-val" id="vAvisoApto">Para marcarlo como apto, al menos una referencia debe recomendarlo.</div>
+    </div>
+    <div class="field">
+      <label class="lbl" for="vComentario">Comentario <span style="font-weight:400;color:var(--slate)">(opcional)</span></label>
+      <textarea id="vComentario" placeholder="Ej. La Ing. Castro lo recomienda, dice que es puntual."></textarea>
+    </div>
+    <div class="field" id="vfQuien">
+      <label class="lbl" for="vQuien">Tu nombre</label>
+      <input type="text" id="vQuien" autocomplete="name">
+      <div class="error-msg">Escribe tu nombre</div>
+    </div>
+    <div class="field" id="vfPuesto">
+      <label class="lbl">Tu puesto</label>
+      <div class="opciones">
+        <label class="opcion"><input type="radio" name="vPuesto" value="Regional"><span>Regional</span></label>
+        <label class="opcion"><input type="radio" name="vPuesto" value="Gerente de sucursal"><span>Gerente de sucursal</span></label>
+      </div>
+      <div class="error-msg">Selecciona tu puesto</div>
+    </div>
+    <div class="modal-acciones">
+      <button class="btn-cancel" id="vCancelar">Cancelar</button>
+      <button class="btn-guardar" id="vGuardar">Guardar validación</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CALIFICAR -->
+<div class="modal-fondo" id="modal" role="dialog" aria-modal="true" aria-labelledby="mTitulo">
+  <div class="modal">
+    <h3 id="mTitulo">Calificar servicio</h3>
+    <div class="para" id="mPara"></div>
+
+    <div class="field" id="mfSucursal">
+      <label class="lbl" for="mSucursal">Sucursal</label>
+      <select id="mSucursal"></select>
+    </div>
+
+    <div class="field" id="mfQue">
+      <label class="lbl">¿Qué pasó con este proveedor?</label>
+      <div class="opciones" style="flex-direction:column;">
+        <label class="opcion"><input type="radio" name="mQue" value="trabajo"><span>✅ Hizo el trabajo</span></label>
+        <label class="opcion"><input type="radio" name="mQue" value="no_contesto"><span>📵 Lo contacté y no contestó</span></label>
+        <label class="opcion"><input type="radio" name="mQue" value="no_vino"><span>🚫 Contestó pero no vino o no pudo atender</span></label>
+        <label class="opcion"><input type="radio" name="mQue" value="cotizo"><span>💲 Cotizó pero no lo contratamos</span></label>
+      </div>
+      <div class="error-msg">Selecciona una opción</div>
+    </div>
+
+    <div id="mBloqueTrabajo" hidden>
+      <div class="field" id="mfTrabajo">
+        <label class="lbl" for="mTrabajo">¿Qué trabajo hizo?</label>
+        <input type="text" id="mTrabajo" placeholder="Ej. cambio de contactores del polipasto">
+        <div class="error-msg">Obligatorio</div>
+      </div>
+      <div class="field" id="mfPuntual">
+        <label class="lbl">¿Llegó cuando dijo?</label>
+        <div class="opciones">
+          <label class="opcion"><input type="radio" name="mPuntual" value="Sí"><span>Sí</span></label>
+          <label class="opcion"><input type="radio" name="mPuntual" value="Llegó tarde"><span>Llegó tarde</span></label>
+        </div>
+        <div class="error-msg">Selecciona una opción</div>
+      </div>
+      <div class="field" id="mfCalidad">
+        <label class="lbl">Calidad del trabajo</label>
+        <div class="stars" data-stars="calidad"></div>
+        <div class="error-msg">Califica de 1 a 5</div>
+      </div>
+      <div class="field" id="mfPrecio">
+        <label class="lbl">¿El precio fue justo?</label>
+        <div class="stars" data-stars="precio"></div>
+        <div class="error-msg">Califica de 1 a 5</div>
+      </div>
+      <div class="field" id="mfRecontratar">
+        <label class="lbl">¿Lo volverías a contratar?</label>
+        <div class="opciones">
+          <label class="opcion"><input type="radio" name="mRecontratar" value="Sí"><span>👍 Sí</span></label>
+          <label class="opcion"><input type="radio" name="mRecontratar" value="No"><span>👎 No</span></label>
+        </div>
+        <div class="error-msg">Selecciona una opción</div>
+      </div>
+    </div>
+
+    <div class="field" id="mfMotivo" hidden>
+      <label class="lbl" for="mMotivo">Motivo <span style="font-weight:400;color:var(--slate)">(opcional)</span></label>
+      <select id="mMotivo"></select>
+    </div>
+
+    <div class="field" id="mfQuien">
+      <label class="lbl" for="mQuien">Tu nombre</label>
+      <input type="text" id="mQuien" autocomplete="name">
+      <div class="error-msg">Escribe tu nombre</div>
+    </div>
+    <div class="field" id="mfPuesto">
+      <label class="lbl">Tu puesto</label>
+      <div class="opciones">
+        <label class="opcion"><input type="radio" name="mPuesto" value="Regional"><span>Regional</span></label>
+        <label class="opcion"><input type="radio" name="mPuesto" value="Gerente de sucursal"><span>Gerente de sucursal</span></label>
+      </div>
+      <div class="error-msg">Selecciona tu puesto</div>
+    </div>
+
+    <div class="field">
+      <label class="lbl" for="mComentario">Comentario <span style="font-weight:400;color:var(--slate)">(opcional)</span></label>
+      <textarea id="mComentario"></textarea>
+    </div>
+
+    <div class="modal-acciones">
+      <button class="btn-cancel" id="mCancelar">Cancelar</button>
+      <button class="btn-guardar" id="mGuardar">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+// ================= CONFIGURACIÓN =================
+// Si API_BUSCAR está vacío, la página funciona en modo DEMO con los datos ficticios de abajo.
+const API_BUSCAR = "https://danielrodriguez.app.n8n.cloud/webhook/proveedores-buscar";
+const API_ACCION = "https://danielrodriguez.app.n8n.cloud/webhook/proveedores-accion";
+const ENLACE_REGISTRO = "https://danielrodgar.github.io/proveedores-pylsa/registro-tecnicos-gruas.html";
+// =================================================
+
+const SUCURSALES = {
+  "Veracruz": ["Veracruz — Col. Pedro I Mata (Matriz)","Veracruz — Col. Ejido 1ro de Mayo (Sur)","Veracruz — Villa Rica (Golfo)",
+    "Veracruz — Col. Artículo 123 (Acerofertas)","Veracruz — Col. Centro","Tejería — Carr. Veracruz-Xalapa",
+    "José Cardel — Col. Centro","Xalapa — Col. Rafael Lucio","Acayucan — Barrio Villalta","Minatitlán — Col. Nueva Mina",
+    "Coatzacoalcos — Col. Benito Juárez","Coatzacoalcos — Estero del Pantano","Cosamaloapan — Col. Centro",
+    "Córdoba — Zona Industrial","Córdoba — Col. Centro","Orizaba — Col. Centro","Orizaba — Col. Abelardo L. Rodríguez",
+    "San Andrés Tuxtla — El Rodeo","San Andrés Tuxtla — Col. 3 de Mayo","Tierra Blanca — Col. Hoja del Maíz","Poza Rica — Jardines de Poza Rica"],
+  "Tabasco": ["Comalcalco — Col. Santa Amalia Zona Industrial","Cárdenas — Carretera km 1.6","Villahermosa — Atasta","Villahermosa — Ciudad Industrial","Huimanguillo — Col. El Desecho"],
+  "Chiapas": ["Tuxtla Gutiérrez — San José Terán","Tuxtla Gutiérrez — Col. Centro Norte","Tuxtla Gutiérrez — Loma Larga","Palenque — Col. Magisterial"],
+  "Oaxaca": ["Tuxtepec — Santa Fe","Tuxtepec — Col. del Carmen"],
+  "Yucatán": ["Mérida — Ciudad Industrial","Mérida — Sambulá","Mérida — El Porvenir","Mérida — Sta. María Chuburná"],
+  "Quintana Roo": ["Cancún — Supermanzana 102","Playa del Carmen — Gonzalo Guerrero"]
+};
+
+// ---------- Datos de ejemplo FICTICIOS (en producción vienen del Sheet) ----------
+const DEMO_PROVEEDORES = [
+ {
+  "id": "PROV-2290000101",
+  "nombre": "GRÚAS Y POLIPASTOS DEL GOLFO SA DE CV",
+  "contacto": "JUAN PÉREZ LARA",
+  "whatsapp": "2290000101",
+  "ciudad": "Veracruz",
+  "estado": "Veracruz",
+  "giro": "Grúas",
+  "anios": "5 a 10 años",
+  "equipos": [
+   "Grúa viajera / puente",
+   "Polipasto eléctrico de cadena",
+   "Polipasto de cable"
+  ],
+  "capacidad": "10 a 20 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Diagnóstico de fallas",
+   "Tablero y contactores",
+   "Botonera y control remoto",
+   "Cambio de cable",
+   "Cambio de gancho o bloque",
+   "Frenos",
+   "Motores"
+  ],
+  "taller": "Sí",
+  "equipoN": 9,
+  "arnes": "Sí",
+  "factura": "Sí",
+  "urgencias": "Sí, 24/7",
+  "llegada": "Mismo día",
+  "visita": "No cobra",
+  "garantia": "3 meses",
+  "pago": "Transferencia, Crédito 30 días",
+  "estatus": "APTO",
+  "sucursales": [
+   "Veracruz — Col. Pedro I Mata (Matriz)",
+   "Veracruz — Col. Ejido 1ro de Mayo (Sur)",
+   "Veracruz — Villa Rica (Golfo)",
+   "Veracruz — Col. Artículo 123 (Acerofertas)",
+   "Veracruz — Col. Centro",
+   "Tejería — Carr. Veracruz-Xalapa",
+   "José Cardel — Col. Centro",
+   "Cosamaloapan — Col. Centro"
+  ],
+  "trabajos": [
+   {
+    "empresa": "METALES DEL PUERTO (ficticio)",
+    "contacto": "ING. LAURA CASTRO",
+    "tel": "2290000111",
+    "que": "Cambio de cable y freno del polipasto principal (grúa viajera 10 t)",
+    "monto": 28500,
+    "refacc": "Sí"
+   },
+   {
+    "empresa": "BODEGAS INDUSTRIALES DEL GOLFO (ficticio)",
+    "contacto": "SR. RAMIRO TOLEDO",
+    "tel": "2290000112",
+    "que": "Mantenimiento preventivo a 3 polipastos de 5 t",
+    "monto": 14000,
+    "refacc": "No"
+   }
+  ]
+ },
+ {
+  "id": "PROV-2290000102",
+  "nombre": "MANTENIMIENTO INDUSTRIAL JAROCHO",
+  "contacto": "ERNESTO VALDEZ ORTIZ",
+  "whatsapp": "2290000102",
+  "ciudad": "Boca del Río",
+  "estado": "Veracruz",
+  "giro": "Grúas",
+  "anios": "3 a 5 años",
+  "equipos": [
+   "Grúa viajera / puente",
+   "Polipasto eléctrico de cadena"
+  ],
+  "capacidad": "5 a 10 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Diagnóstico de fallas",
+   "Tablero y contactores",
+   "Botonera y control remoto",
+   "Frenos",
+   "Motores"
+  ],
+  "taller": "Sí",
+  "equipoN": 8,
+  "arnes": "Sí",
+  "factura": "Sí",
+  "urgencias": "Fines de semana y horario extendido",
+  "llegada": "Mismo día",
+  "visita": "$500",
+  "garantia": "3 meses",
+  "pago": "Transferencia, Efectivo",
+  "estatus": "PENDIENTE",
+  "sucursales": [
+   "Veracruz — Col. Pedro I Mata (Matriz)",
+   "Veracruz — Col. Ejido 1ro de Mayo (Sur)",
+   "Veracruz — Villa Rica (Golfo)",
+   "Veracruz — Col. Artículo 123 (Acerofertas)",
+   "Veracruz — Col. Centro",
+   "Tejería — Carr. Veracruz-Xalapa",
+   "José Cardel — Col. Centro"
+  ],
+  "trabajos": [
+   {
+    "empresa": "FRIGORÍFICOS DEL PUERTO (ficticio)",
+    "contacto": "LIC. CARMEN RÍOS",
+    "tel": "2290000121",
+    "que": "Reparación de motor de traslación (grúa viajera 5 t)",
+    "monto": 18000,
+    "refacc": "Sí"
+   },
+   {
+    "empresa": "TALLER NAVAL BOCA (ficticio)",
+    "contacto": "SR. TOMÁS GALINDO",
+    "tel": "2290000122",
+    "que": "Cambio de botonera y contactores",
+    "monto": 7500,
+    "refacc": "Sí"
+   }
+  ]
+ },
+ {
+  "id": "PROV-2290000103",
+  "nombre": "SAÚL HERRERA DOMÍNGUEZ",
+  "contacto": "SAÚL HERRERA DOMÍNGUEZ",
+  "whatsapp": "2290000103",
+  "ciudad": "Veracruz",
+  "estado": "Veracruz",
+  "giro": "Grúas",
+  "anios": "1 a 3 años",
+  "equipos": [
+   "Polipasto eléctrico de cadena"
+  ],
+  "capacidad": "3 a 5 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Tablero y contactores"
+  ],
+  "taller": "No",
+  "equipoN": 5,
+  "arnes": "Sí",
+  "factura": "No",
+  "urgencias": "Solo horario hábil",
+  "llegada": "24 horas",
+  "visita": "$350",
+  "garantia": "30 días",
+  "pago": "Efectivo",
+  "estatus": "PENDIENTE",
+  "sucursales": [
+   "Veracruz — Col. Pedro I Mata (Matriz)",
+   "Veracruz — Col. Ejido 1ro de Mayo (Sur)",
+   "Veracruz — Villa Rica (Golfo)",
+   "Veracruz — Col. Artículo 123 (Acerofertas)",
+   "Veracruz — Col. Centro"
+  ],
+  "trabajos": [
+   {
+    "empresa": "FERRETERÍA LA ESPERANZA (ficticio)",
+    "contacto": "SR. RUBÉN MOTA",
+    "tel": "2290000131",
+    "que": "Cambio de contactores (polipasto 2 t)",
+    "monto": 2800,
+    "refacc": "Sí"
+   },
+   {
+    "empresa": "PANADERÍA INDUSTRIAL DEL CENTRO (ficticio)",
+    "contacto": "SRA. LUCÍA PAZ",
+    "tel": "2290000132",
+    "que": "Mantenimiento preventivo (polipasto 1 t)",
+    "monto": 1500,
+    "refacc": "No"
+   }
+  ]
+ },
+ {
+  "id": "PROV-2280000201",
+  "nombre": "ELECTROMECÁNICA XALAPEÑA SA DE CV",
+  "contacto": "ING. RODRIGO MÁRQUEZ",
+  "whatsapp": "2280000201",
+  "ciudad": "Xalapa",
+  "estado": "Veracruz",
+  "giro": "Grúas",
+  "anios": "Más de 10 años",
+  "equipos": [
+   "Grúa viajera / puente",
+   "Polipasto eléctrico de cadena",
+   "Polipasto de cable",
+   "Monorriel / trole"
+  ],
+  "capacidad": "10 a 20 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Diagnóstico de fallas",
+   "Tablero y contactores",
+   "Botonera y control remoto",
+   "Cambio de cable",
+   "Cambio de gancho o bloque",
+   "Frenos",
+   "Motores",
+   "Variadores"
+  ],
+  "taller": "Sí",
+  "equipoN": 10,
+  "arnes": "Sí",
+  "factura": "Sí",
+  "urgencias": "Sí, 24/7",
+  "llegada": "Mismo día",
+  "visita": "Solo si no se contrata",
+  "garantia": "6 meses o más",
+  "pago": "Transferencia, Crédito 15 días",
+  "estatus": "APTO",
+  "sucursales": [
+   "Xalapa — Col. Rafael Lucio",
+   "José Cardel — Col. Centro",
+   "Tejería — Carr. Veracruz-Xalapa"
+  ],
+  "trabajos": [
+   {
+    "empresa": "CEMENTERA DE LAS ALTAS MONTAÑAS (ficticio)",
+    "contacto": "ING. JORGE LAGUNES",
+    "tel": "2280000211",
+    "que": "Cambio de variador y botonera radio (grúa viajera 15 t)",
+    "monto": 54000,
+    "refacc": "Sí"
+   },
+   {
+    "empresa": "EMBOTELLADORA DEL CENTRO (ficticio)",
+    "contacto": "ING. PATRICIA SOLÍS",
+    "tel": "2280000212",
+    "que": "Mantenimiento preventivo anual a 4 grúas",
+    "monto": 46000,
+    "refacc": "No"
+   }
+  ]
+ },
+ {
+  "id": "PROV-7820000301",
+  "nombre": "SERVICIOS PETROLEROS Y GRÚAS DEL NORTE",
+  "contacto": "LIC. ADRIANA SALAS",
+  "whatsapp": "7820000301",
+  "ciudad": "Poza Rica",
+  "estado": "Veracruz",
+  "giro": "Grúas",
+  "anios": "5 a 10 años",
+  "equipos": [
+   "Grúa viajera / puente",
+   "Polipasto de cable",
+   "Grúa pórtico"
+  ],
+  "capacidad": "Más de 20 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Diagnóstico de fallas",
+   "Tablero y contactores",
+   "Botonera y control remoto",
+   "Cambio de cable",
+   "Cambio de gancho o bloque",
+   "Frenos",
+   "Motores",
+   "Prueba de carga"
+  ],
+  "taller": "Sí",
+  "equipoN": 9,
+  "arnes": "Sí",
+  "factura": "Sí",
+  "urgencias": "Sí, 24/7",
+  "llegada": "24 horas",
+  "visita": "$900",
+  "garantia": "3 meses",
+  "pago": "Transferencia, Crédito 30 días",
+  "estatus": "PENDIENTE",
+  "sucursales": [
+   "Poza Rica — Jardines de Poza Rica",
+   "Xalapa — Col. Rafael Lucio"
+  ],
+  "trabajos": [
+   {
+    "empresa": "PERFORACIONES DEL NORTE (ficticio)",
+    "contacto": "ING. ÓSCAR TREJO",
+    "tel": "7820000311",
+    "que": "Cambio de cable y prueba de carga (pórtico 30 t)",
+    "monto": 98000,
+    "refacc": "Sí"
+   },
+   {
+    "empresa": "TUBERÍAS TUXPAN (ficticio)",
+    "contacto": "ING. MÓNICA VERA",
+    "tel": "7820000312",
+    "que": "Reparación de freno (grúa viajera 10 t)",
+    "monto": 21000,
+    "refacc": "No"
+   }
+  ]
+ },
+ {
+  "id": "PROV-2710000401",
+  "nombre": "ROBERTO SALAZAR VÁZQUEZ",
+  "contacto": "ROBERTO SALAZAR VÁZQUEZ",
+  "whatsapp": "2710000401",
+  "ciudad": "Córdoba",
+  "estado": "Veracruz",
+  "giro": "Grúas",
+  "anios": "5 a 10 años",
+  "equipos": [
+   "Grúa viajera / puente",
+   "Polipasto eléctrico de cadena"
+  ],
+  "capacidad": "5 a 10 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Cambio de cable",
+   "Frenos",
+   "Tablero y contactores"
+  ],
+  "taller": "Sí",
+  "equipoN": 6,
+  "arnes": "Sí",
+  "factura": "Sí",
+  "urgencias": "Fines de semana y horario extendido",
+  "llegada": "24 horas",
+  "visita": "No cobra",
+  "garantia": "30 días",
+  "pago": "Transferencia",
+  "estatus": "NO APTO",
+  "sucursales": [
+   "Córdoba — Zona Industrial",
+   "Córdoba — Col. Centro",
+   "Orizaba — Col. Centro",
+   "Orizaba — Col. Abelardo L. Rodríguez",
+   "Tierra Blanca — Col. Hoja del Maíz"
+  ],
+  "trabajos": [
+   {
+    "empresa": "AZUCARERA DEL VALLE (ficticio)",
+    "contacto": "ING. MIGUEL ORTIZ",
+    "tel": "2710000411",
+    "que": "Cambio de cable (grúa viajera 8 t)",
+    "monto": 22000,
+    "refacc": "Sí"
+   }
+  ],
+  "comentarioValidacion": "La empresa de la referencia dice que no lo conoce."
+ },
+ {
+  "id": "PROV-2720000501",
+  "nombre": "GRÚAS Y MANIOBRAS DE ORIZABA",
+  "contacto": "ING. FELIPE CARMONA",
+  "whatsapp": "2720000501",
+  "ciudad": "Orizaba",
+  "estado": "Veracruz",
+  "giro": "Grúas",
+  "anios": "Más de 10 años",
+  "equipos": [
+   "Grúa viajera / puente",
+   "Polipasto eléctrico de cadena",
+   "Polipasto de cable"
+  ],
+  "capacidad": "10 a 20 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Diagnóstico de fallas",
+   "Tablero y contactores",
+   "Botonera y control remoto",
+   "Cambio de cable",
+   "Cambio de gancho o bloque",
+   "Frenos",
+   "Motores",
+   "Rieles, trole y ruedas"
+  ],
+  "taller": "Sí",
+  "equipoN": 9,
+  "arnes": "Sí",
+  "factura": "Sí",
+  "urgencias": "Fines de semana y horario extendido",
+  "llegada": "Mismo día",
+  "visita": "No cobra",
+  "garantia": "6 meses o más",
+  "pago": "Transferencia, Crédito 30 días",
+  "estatus": "APTO",
+  "sucursales": [
+   "Córdoba — Zona Industrial",
+   "Córdoba — Col. Centro",
+   "Orizaba — Col. Centro",
+   "Orizaba — Col. Abelardo L. Rodríguez",
+   "Tierra Blanca — Col. Hoja del Maíz"
+  ],
+  "trabajos": [
+   {
+    "empresa": "CERVECERÍA DE LA SIERRA (ficticio)",
+    "contacto": "ING. DIANA MORENO",
+    "tel": "2720000511",
+    "que": "Alineación de rieles y cambio de ruedas (grúa 10 t)",
+    "monto": 38000,
+    "refacc": "No"
+   },
+   {
+    "empresa": "PAPELERA DEL RÍO BLANCO (ficticio)",
+    "contacto": "SR. HUGO ESPINOSA",
+    "tel": "2720000512",
+    "que": "Cambio de gancho y bloque (polipasto 5 t)",
+    "monto": 16500,
+    "refacc": "Sí"
+   }
+  ]
+ },
+ {
+  "id": "PROV-2710000402",
+  "nombre": "TALLER ELÉCTRICO MONTERO",
+  "contacto": "CARLOS MONTERO RUIZ",
+  "whatsapp": "2710000402",
+  "ciudad": "Córdoba",
+  "estado": "Veracruz",
+  "giro": "Grúas",
+  "anios": "3 a 5 años",
+  "equipos": [
+   "Polipasto eléctrico de cadena",
+   "Monorriel / trole"
+  ],
+  "capacidad": "3 a 5 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Diagnóstico de fallas",
+   "Tablero y contactores",
+   "Botonera y control remoto"
+  ],
+  "taller": "Sí",
+  "equipoN": 7,
+  "arnes": "Sí",
+  "factura": "No",
+  "urgencias": "Solo horario hábil",
+  "llegada": "Mismo día",
+  "visita": "$300",
+  "garantia": "30 días",
+  "pago": "Efectivo, Transferencia",
+  "estatus": "PENDIENTE",
+  "sucursales": [
+   "Córdoba — Zona Industrial",
+   "Córdoba — Col. Centro",
+   "Orizaba — Col. Centro",
+   "Orizaba — Col. Abelardo L. Rodríguez"
+  ],
+  "trabajos": [
+   {
+    "empresa": "BENEFICIO DE CAFÉ LA LOMA (ficticio)",
+    "contacto": "SR. ALFONSO PALE",
+    "tel": "2710000421",
+    "que": "Reparación de tablero (polipasto 3 t)",
+    "monto": 4200,
+    "refacc": "Sí"
+   },
+   {
+    "empresa": "EMPACADORA CÓRDOBA (ficticio)",
+    "contacto": "LIC. INÉS LOZANO",
+    "tel": "2710000422",
+    "que": "Mantenimiento preventivo (2 polipastos)",
+    "monto": 3800,
+    "refacc": "No"
+   }
+  ]
+ },
+ {
+  "id": "PROV-2870000601",
+  "nombre": "MANTENIMIENTO INDUSTRIAL DEL PAPALOAPAN",
+  "contacto": "ING. RAÚL ÁVILA",
+  "whatsapp": "2870000601",
+  "ciudad": "Tuxtepec",
+  "estado": "Oaxaca",
+  "giro": "Grúas",
+  "anios": "5 a 10 años",
+  "equipos": [
+   "Grúa viajera / puente",
+   "Polipasto eléctrico de cadena"
+  ],
+  "capacidad": "5 a 10 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Diagnóstico de fallas",
+   "Tablero y contactores",
+   "Botonera y control remoto",
+   "Cambio de cable",
+   "Frenos"
+  ],
+  "taller": "Sí",
+  "equipoN": 8,
+  "arnes": "Sí",
+  "factura": "Sí",
+  "urgencias": "Fines de semana y horario extendido",
+  "llegada": "Mismo día",
+  "visita": "No cobra",
+  "garantia": "3 meses",
+  "pago": "Transferencia, Crédito 15 días",
+  "estatus": "APTO",
+  "sucursales": [
+   "Cosamaloapan — Col. Centro",
+   "Tierra Blanca — Col. Hoja del Maíz",
+   "Tuxtepec — Santa Fe",
+   "Tuxtepec — Col. del Carmen"
+  ],
+  "trabajos": [
+   {
+    "empresa": "INGENIO DEL PAPALOAPAN (ficticio)",
+    "contacto": "ING. GERARDO LEYVA",
+    "tel": "2870000611",
+    "que": "Cambio de cable y freno (grúa viajera 8 t)",
+    "monto": 26000,
+    "refacc": "Sí"
+   },
+   {
+    "empresa": "CERVECERA TUXTEPEC (ficticio)",
+    "contacto": "SRA. ELENA CRUZ",
+    "tel": "2870000612",
+    "que": "Mantenimiento preventivo (polipasto 5 t)",
+    "monto": 6500,
+    "refacc": "No"
+   }
+  ]
+ },
+ {
+  "id": "PROV-9930000701",
+  "nombre": "SERVICIOS INDUSTRIALES TABASCO SA DE CV",
+  "contacto": "ING. MARIO HERNÁNDEZ",
+  "whatsapp": "9930000701",
+  "ciudad": "Villahermosa",
+  "estado": "Tabasco",
+  "giro": "Grúas",
+  "anios": "Más de 10 años",
+  "equipos": [
+   "Grúa viajera / puente",
+   "Polipasto de cable",
+   "Grúa pórtico",
+   "Grúa bandera"
+  ],
+  "capacidad": "Más de 20 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Diagnóstico de fallas",
+   "Tablero y contactores",
+   "Botonera y control remoto",
+   "Cambio de cable",
+   "Cambio de gancho o bloque",
+   "Frenos",
+   "Motores",
+   "Variadores",
+   "Rieles, trole y ruedas",
+   "Prueba de carga",
+   "Instalación de grúa nueva"
+  ],
+  "taller": "Sí",
+  "equipoN": 10,
+  "arnes": "Sí",
+  "factura": "Sí",
+  "urgencias": "Sí, 24/7",
+  "llegada": "Mismo día",
+  "visita": "Solo si no se contrata",
+  "garantia": "6 meses o más",
+  "pago": "Transferencia, Crédito 15 y 30 días",
+  "estatus": "APTO",
+  "sucursales": [
+   "Comalcalco — Col. Santa Amalia Zona Industrial",
+   "Cárdenas — Carretera km 1.6",
+   "Villahermosa — Atasta",
+   "Villahermosa — Ciudad Industrial",
+   "Huimanguillo — Col. El Desecho",
+   "Palenque — Col. Magisterial",
+   "Coatzacoalcos — Col. Benito Juárez",
+   "Coatzacoalcos — Estero del Pantano"
+  ],
+  "trabajos": [
+   {
+    "empresa": "PETROSERVICIOS DEL SURESTE (ficticio)",
+    "contacto": "ING. CARLOS DOMÍNGUEZ",
+    "tel": "9930000711",
+    "que": "Instalación de grúa viajera nueva de 25 t y prueba de carga",
+    "monto": 185000,
+    "refacc": "Sí"
+   },
+   {
+    "empresa": "AGREGADOS DE LA CHONTALPA (ficticio)",
+    "contacto": "ING. SOFÍA PRIEGO",
+    "tel": "9930000712",
+    "que": "Alineación de rieles y cambio de ruedas (grúa viajera 15 t)",
+    "monto": 62000,
+    "refacc": "No"
+   }
+  ]
+ },
+ {
+  "id": "PROV-9210000801",
+  "nombre": "JUAN CARLOS MÉNDEZ RUIZ",
+  "contacto": "JUAN CARLOS MÉNDEZ RUIZ",
+  "whatsapp": "9210000801",
+  "ciudad": "Coatzacoalcos",
+  "estado": "Veracruz",
+  "giro": "Grúas",
+  "anios": "3 a 5 años",
+  "equipos": [
+   "Polipasto eléctrico de cadena",
+   "Monorriel / trole"
+  ],
+  "capacidad": "3 a 5 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Diagnóstico de fallas",
+   "Tablero y contactores",
+   "Botonera y control remoto"
+  ],
+  "taller": "No",
+  "equipoN": 7,
+  "arnes": "Sí",
+  "factura": "Sí",
+  "urgencias": "Fines de semana y horario extendido",
+  "llegada": "24 horas",
+  "visita": "$600",
+  "garantia": "30 días",
+  "pago": "Transferencia, Efectivo",
+  "estatus": "PENDIENTE",
+  "sucursales": [
+   "Coatzacoalcos — Col. Benito Juárez",
+   "Coatzacoalcos — Estero del Pantano",
+   "Minatitlán — Col. Nueva Mina",
+   "Acayucan — Barrio Villalta",
+   "San Andrés Tuxtla — El Rodeo",
+   "San Andrés Tuxtla — Col. 3 de Mayo"
+  ],
+  "trabajos": [
+   {
+    "empresa": "MADERERÍA EL PANTANO (ficticio)",
+    "contacto": "LIC. ROSA ALVARADO",
+    "tel": "9210000811",
+    "que": "Cambio de botonera y contactores (polipasto 3 t)",
+    "monto": 6800,
+    "refacc": "Sí"
+   },
+   {
+    "empresa": "TALLERES MARÍTIMOS COATZA (ficticio)",
+    "contacto": "ING. PABLO REYES",
+    "tel": "9210000812",
+    "que": "Diagnóstico y reparación de tablero (monorriel 2 t)",
+    "monto": 4500,
+    "refacc": "No"
+   }
+  ]
+ },
+ {
+  "id": "PROV-9220000901",
+  "nombre": "TALLER ELECTROMECÁNICO RAMOS",
+  "contacto": "ALBERTO RAMOS CRUZ",
+  "whatsapp": "9220000901",
+  "ciudad": "Minatitlán",
+  "estado": "Veracruz",
+  "giro": "Grúas",
+  "anios": "1 a 3 años",
+  "equipos": [
+   "Polipasto eléctrico de cadena"
+  ],
+  "capacidad": "Hasta 3 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Motores",
+   "Tablero y contactores"
+  ],
+  "taller": "Sí",
+  "equipoN": 6,
+  "arnes": "Sí",
+  "factura": "No",
+  "urgencias": "Solo horario hábil",
+  "llegada": "Mismo día",
+  "visita": "$400",
+  "garantia": "30 días",
+  "pago": "Efectivo",
+  "estatus": "PENDIENTE",
+  "sucursales": [
+   "Coatzacoalcos — Col. Benito Juárez",
+   "Coatzacoalcos — Estero del Pantano",
+   "Minatitlán — Col. Nueva Mina",
+   "Acayucan — Barrio Villalta"
+  ],
+  "trabajos": [
+   {
+    "empresa": "REFRESQUERA DEL ISTMO (ficticio)",
+    "contacto": "SR. HÉCTOR LUNA",
+    "tel": "9220000911",
+    "que": "Rebobinado de motor de polipasto 2 t",
+    "monto": 5200,
+    "refacc": "Sí"
+   },
+   {
+    "empresa": "FERRETERÍA LA CENTRAL (ficticio)",
+    "contacto": "SRA. MARTA GIL",
+    "tel": "9220000912",
+    "que": "Mantenimiento preventivo a polipasto 1 t",
+    "monto": 1800,
+    "refacc": "No"
+   }
+  ]
+ },
+ {
+  "id": "PROV-9210000802",
+  "nombre": "MANIOBRAS Y MONTAJES DEL ISTMO",
+  "contacto": "ING. VÍCTOR CHONTAL",
+  "whatsapp": "9210000802",
+  "ciudad": "Coatzacoalcos",
+  "estado": "Veracruz",
+  "giro": "Grúas",
+  "anios": "5 a 10 años",
+  "equipos": [
+   "Grúa viajera / puente",
+   "Polipasto eléctrico de cadena",
+   "Polipasto de cable",
+   "Grúa pórtico"
+  ],
+  "capacidad": "Más de 20 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Diagnóstico de fallas",
+   "Tablero y contactores",
+   "Botonera y control remoto",
+   "Cambio de cable",
+   "Cambio de gancho o bloque",
+   "Frenos",
+   "Motores",
+   "Rieles, trole y ruedas",
+   "Prueba de carga"
+  ],
+  "taller": "Sí",
+  "equipoN": 9,
+  "arnes": "Sí",
+  "factura": "Sí",
+  "urgencias": "Sí, 24/7",
+  "llegada": "Mismo día",
+  "visita": "No cobra",
+  "garantia": "3 meses",
+  "pago": "Transferencia, Crédito 30 días",
+  "estatus": "APTO",
+  "sucursales": [
+   "Coatzacoalcos — Col. Benito Juárez",
+   "Coatzacoalcos — Estero del Pantano",
+   "Minatitlán — Col. Nueva Mina",
+   "Acayucan — Barrio Villalta",
+   "San Andrés Tuxtla — El Rodeo",
+   "San Andrés Tuxtla — Col. 3 de Mayo",
+   "Acayucan — Barrio Villalta",
+   "Cosamaloapan — Col. Centro"
+  ],
+  "trabajos": [
+   {
+    "empresa": "PETROQUÍMICA DEL ISTMO (ficticio)",
+    "contacto": "ING. ARTURO CEBALLOS",
+    "tel": "9210000821",
+    "que": "Prueba de carga y certificación (pórtico 20 t)",
+    "monto": 72000,
+    "refacc": "No"
+   },
+   {
+    "empresa": "ASTILLERO DEL SURESTE (ficticio)",
+    "contacto": "ING. NORMA CASTILLO",
+    "tel": "9210000822",
+    "que": "Cambio de cable y gancho (grúa viajera 15 t)",
+    "monto": 41000,
+    "refacc": "Sí"
+   }
+  ]
+ },
+ {
+  "id": "PROV-2940001001",
+  "nombre": "SERVICIOS TÉCNICOS LOS TUXTLAS",
+  "contacto": "MIGUEL ÁNGEL TOTO",
+  "whatsapp": "2940001001",
+  "ciudad": "San Andrés Tuxtla",
+  "estado": "Veracruz",
+  "giro": "Grúas",
+  "anios": "3 a 5 años",
+  "equipos": [
+   "Grúa viajera / puente",
+   "Polipasto eléctrico de cadena"
+  ],
+  "capacidad": "5 a 10 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Diagnóstico de fallas",
+   "Tablero y contactores",
+   "Botonera y control remoto",
+   "Frenos"
+  ],
+  "taller": "Sí",
+  "equipoN": 7,
+  "arnes": "Sí",
+  "factura": "Sí",
+  "urgencias": "Fines de semana y horario extendido",
+  "llegada": "Mismo día",
+  "visita": "No cobra",
+  "garantia": "3 meses",
+  "pago": "Transferencia",
+  "estatus": "PENDIENTE",
+  "sucursales": [
+   "San Andrés Tuxtla — El Rodeo",
+   "San Andrés Tuxtla — Col. 3 de Mayo",
+   "Acayucan — Barrio Villalta",
+   "Cosamaloapan — Col. Centro"
+  ],
+  "trabajos": [
+   {
+    "empresa": "TABACALERA DE LOS TUXTLAS (ficticio)",
+    "contacto": "SR. ROBERTO XOLO",
+    "tel": "2940001011",
+    "que": "Ajuste de freno y botonera (grúa 5 t)",
+    "monto": 8900,
+    "refacc": "Sí"
+   },
+   {
+    "empresa": "BODEGA GRANOS SAN ANDRÉS (ficticio)",
+    "contacto": "SRA. IRMA TEPOX",
+    "tel": "2940001012",
+    "que": "Mantenimiento preventivo (polipasto 3 t)",
+    "monto": 3500,
+    "refacc": "No"
+   }
+  ]
+ },
+ {
+  "id": "PROV-9370001101",
+  "nombre": "GRÚAS INDUSTRIALES DE LA CHONTALPA",
+  "contacto": "ING. PEDRO OLÁN",
+  "whatsapp": "9370001101",
+  "ciudad": "Cárdenas",
+  "estado": "Tabasco",
+  "giro": "Grúas",
+  "anios": "5 a 10 años",
+  "equipos": [
+   "Grúa viajera / puente",
+   "Polipasto eléctrico de cadena"
+  ],
+  "capacidad": "10 a 20 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Diagnóstico de fallas",
+   "Tablero y contactores",
+   "Botonera y control remoto",
+   "Cambio de cable",
+   "Cambio de gancho o bloque",
+   "Frenos",
+   "Motores"
+  ],
+  "taller": "Sí",
+  "equipoN": 8,
+  "arnes": "Sí",
+  "factura": "Sí",
+  "urgencias": "Fines de semana y horario extendido",
+  "llegada": "Mismo día",
+  "visita": "$500",
+  "garantia": "3 meses",
+  "pago": "Transferencia, Crédito 15 días",
+  "estatus": "PENDIENTE",
+  "sucursales": [
+   "Comalcalco — Col. Santa Amalia Zona Industrial",
+   "Cárdenas — Carretera km 1.6",
+   "Villahermosa — Atasta",
+   "Villahermosa — Ciudad Industrial",
+   "Huimanguillo — Col. El Desecho"
+  ],
+  "trabajos": [
+   {
+    "empresa": "CACAOTERA DE COMALCALCO (ficticio)",
+    "contacto": "LIC. BEATRIZ PÉREZ",
+    "tel": "9370001111",
+    "que": "Cambio de motor de elevación (grúa 10 t)",
+    "monto": 34000,
+    "refacc": "Sí"
+   },
+   {
+    "empresa": "PLATAFORMAS DEL GOLFO (ficticio)",
+    "contacto": "ING. LUIS JIMÉNEZ",
+    "tel": "9370001112",
+    "que": "Diagnóstico y reparación de tablero",
+    "monto": 9200,
+    "refacc": "No"
+   }
+  ]
+ },
+ {
+  "id": "PROV-9930000702",
+  "nombre": "JOSÉ LUIS DE LA CRUZ HERNÁNDEZ",
+  "contacto": "JOSÉ LUIS DE LA CRUZ HERNÁNDEZ",
+  "whatsapp": "9930000702",
+  "ciudad": "Villahermosa",
+  "estado": "Tabasco",
+  "giro": "Grúas",
+  "anios": "Menos de 1 año",
+  "equipos": [
+   "Polipasto eléctrico de cadena"
+  ],
+  "capacidad": "Hasta 3 t",
+  "servicios": [
+   "Mantenimiento preventivo"
+  ],
+  "taller": "No",
+  "equipoN": 3,
+  "arnes": "No",
+  "factura": "No",
+  "urgencias": "Solo horario hábil",
+  "llegada": "48 horas",
+  "visita": "$300",
+  "garantia": "No",
+  "pago": "Efectivo",
+  "estatus": "PENDIENTE",
+  "sucursales": [
+   "Villahermosa — Atasta",
+   "Villahermosa — Ciudad Industrial"
+  ],
+  "trabajos": [
+   {
+    "empresa": "TIENDA DE PINTURAS EL ÁGUILA (ficticio)",
+    "contacto": "SR. RAÚL MAY",
+    "tel": "9930000721",
+    "que": "Lubricación de polipasto 1 t",
+    "monto": 700,
+    "refacc": "No"
+   }
+  ]
+ },
+ {
+  "id": "PROV-9610001201",
+  "nombre": "SOLUCIONES ELECTROMECÁNICAS DE CHIAPAS",
+  "contacto": "ING. KARLA GORDILLO",
+  "whatsapp": "9610001201",
+  "ciudad": "Tuxtla Gutiérrez",
+  "estado": "Chiapas",
+  "giro": "Grúas",
+  "anios": "5 a 10 años",
+  "equipos": [
+   "Grúa viajera / puente",
+   "Polipasto eléctrico de cadena",
+   "Polipasto de cable"
+  ],
+  "capacidad": "10 a 20 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Diagnóstico de fallas",
+   "Tablero y contactores",
+   "Botonera y control remoto",
+   "Cambio de cable",
+   "Cambio de gancho o bloque",
+   "Frenos",
+   "Motores",
+   "Variadores"
+  ],
+  "taller": "Sí",
+  "equipoN": 9,
+  "arnes": "Sí",
+  "factura": "Sí",
+  "urgencias": "Sí, 24/7",
+  "llegada": "Mismo día",
+  "visita": "No cobra",
+  "garantia": "6 meses o más",
+  "pago": "Transferencia, Crédito 30 días",
+  "estatus": "APTO",
+  "sucursales": [
+   "Tuxtla Gutiérrez — San José Terán",
+   "Tuxtla Gutiérrez — Col. Centro Norte",
+   "Tuxtla Gutiérrez — Loma Larga"
+  ],
+  "trabajos": [
+   {
+    "empresa": "CEMENTOS DEL GRIJALVA (ficticio)",
+    "contacto": "ING. ROCÍO ALFARO",
+    "tel": "9610001211",
+    "que": "Cambio de variadores de traslación (grúa 15 t)",
+    "monto": 47000,
+    "refacc": "Sí"
+   },
+   {
+    "empresa": "REFRESCOS DEL SURESTE (ficticio)",
+    "contacto": "ING. MANUEL PENAGOS",
+    "tel": "9610001212",
+    "que": "Mantenimiento preventivo semestral (3 grúas)",
+    "monto": 29000,
+    "refacc": "No"
+   }
+  ]
+ },
+ {
+  "id": "PROV-9160001301",
+  "nombre": "SERVICIOS INDUSTRIALES PALENQUE",
+  "contacto": "ARMANDO CRUZ LÓPEZ",
+  "whatsapp": "9160001301",
+  "ciudad": "Palenque",
+  "estado": "Chiapas",
+  "giro": "Grúas",
+  "anios": "3 a 5 años",
+  "equipos": [
+   "Polipasto eléctrico de cadena"
+  ],
+  "capacidad": "3 a 5 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Diagnóstico de fallas",
+   "Tablero y contactores",
+   "Botonera y control remoto"
+  ],
+  "taller": "No",
+  "equipoN": 7,
+  "arnes": "Sí",
+  "factura": "Sí",
+  "urgencias": "Fines de semana y horario extendido",
+  "llegada": "Mismo día",
+  "visita": "$400",
+  "garantia": "30 días",
+  "pago": "Transferencia, Efectivo",
+  "estatus": "PENDIENTE",
+  "sucursales": [
+   "Palenque — Col. Magisterial"
+  ],
+  "trabajos": [
+   {
+    "empresa": "BODEGA DE GRANOS PALENQUE (ficticio)",
+    "contacto": "SR. ELÍAS NÚÑEZ",
+    "tel": "9160001311",
+    "que": "Cambio de botonera (polipasto 2 t)",
+    "monto": 3200,
+    "refacc": "Sí"
+   },
+   {
+    "empresa": "ASERRADERO LA SELVA (ficticio)",
+    "contacto": "SRA. TERESA PÉREZ",
+    "tel": "9160001312",
+    "que": "Reparación de tablero (polipasto 3 t)",
+    "monto": 4100,
+    "refacc": "No"
+   }
+  ]
+ },
+ {
+  "id": "PROV-9990001401",
+  "nombre": "GRÚAS Y SERVICIOS PENINSULARES SA DE CV",
+  "contacto": "ING. ANDRÉS CANCHÉ",
+  "whatsapp": "9990001401",
+  "ciudad": "Mérida",
+  "estado": "Yucatán",
+  "giro": "Grúas",
+  "anios": "Más de 10 años",
+  "equipos": [
+   "Grúa viajera / puente",
+   "Polipasto eléctrico de cadena",
+   "Polipasto de cable",
+   "Grúa bandera"
+  ],
+  "capacidad": "10 a 20 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Diagnóstico de fallas",
+   "Tablero y contactores",
+   "Botonera y control remoto",
+   "Cambio de cable",
+   "Cambio de gancho o bloque",
+   "Frenos",
+   "Motores",
+   "Variadores",
+   "Rieles, trole y ruedas"
+  ],
+  "taller": "Sí",
+  "equipoN": 10,
+  "arnes": "Sí",
+  "factura": "Sí",
+  "urgencias": "Sí, 24/7",
+  "llegada": "Mismo día",
+  "visita": "Solo si no se contrata",
+  "garantia": "6 meses o más",
+  "pago": "Transferencia, Crédito 30 días",
+  "estatus": "APTO",
+  "sucursales": [
+   "Mérida — Ciudad Industrial",
+   "Mérida — Sambulá",
+   "Mérida — El Porvenir",
+   "Mérida — Sta. María Chuburná"
+  ],
+  "trabajos": [
+   {
+    "empresa": "CERVECERÍA PENINSULAR (ficticio)",
+    "contacto": "ING. GABRIELA POOL",
+    "tel": "9990001411",
+    "que": "Cambio de rieles y ruedas (grúa viajera 12 t)",
+    "monto": 67000,
+    "refacc": "Sí"
+   },
+   {
+    "empresa": "ALIMENTOS DEL MAYAB (ficticio)",
+    "contacto": "ING. RICARDO UC",
+    "tel": "9990001412",
+    "que": "Mantenimiento preventivo a 5 polipastos",
+    "monto": 22500,
+    "refacc": "No"
+   }
+  ]
+ },
+ {
+  "id": "PROV-9990001402",
+  "nombre": "LUIS ALBERTO GÓMEZ CANUL",
+  "contacto": "LUIS ALBERTO GÓMEZ CANUL",
+  "whatsapp": "9990001402",
+  "ciudad": "Mérida",
+  "estado": "Yucatán",
+  "giro": "Grúas",
+  "anios": "Menos de 1 año",
+  "equipos": [
+   "Polipasto eléctrico de cadena"
+  ],
+  "capacidad": "Hasta 3 t",
+  "servicios": [
+   "Mantenimiento preventivo"
+  ],
+  "taller": "No",
+  "equipoN": 2,
+  "arnes": "No",
+  "factura": "No",
+  "urgencias": "Solo horario hábil",
+  "llegada": "48 horas",
+  "visita": "$400",
+  "garantia": "No",
+  "pago": "Efectivo",
+  "estatus": "PENDIENTE",
+  "sucursales": [
+   "Mérida — Ciudad Industrial",
+   "Mérida — Sambulá",
+   "Mérida — El Porvenir",
+   "Mérida — Sta. María Chuburná"
+  ],
+  "trabajos": [
+   {
+    "empresa": "FERRETERÍA LA YUCATECA (ficticio)",
+    "contacto": "SR. JORGE PECH",
+    "tel": "9990001421",
+    "que": "Lubricación de polipasto 1 t",
+    "monto": 900,
+    "refacc": "No"
+   }
+  ]
+ },
+ {
+  "id": "PROV-9980001501",
+  "nombre": "MANTENIMIENTO INDUSTRIAL DEL CARIBE",
+  "contacto": "ING. DANIELA ESCALANTE",
+  "whatsapp": "9980001501",
+  "ciudad": "Cancún",
+  "estado": "Quintana Roo",
+  "giro": "Grúas",
+  "anios": "5 a 10 años",
+  "equipos": [
+   "Grúa viajera / puente",
+   "Polipasto eléctrico de cadena"
+  ],
+  "capacidad": "5 a 10 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Diagnóstico de fallas",
+   "Tablero y contactores",
+   "Botonera y control remoto",
+   "Cambio de cable",
+   "Frenos"
+  ],
+  "taller": "Sí",
+  "equipoN": 8,
+  "arnes": "Sí",
+  "factura": "Sí",
+  "urgencias": "Sí, 24/7",
+  "llegada": "24 horas",
+  "visita": "$700",
+  "garantia": "3 meses",
+  "pago": "Transferencia, Crédito 15 días",
+  "estatus": "PENDIENTE",
+  "sucursales": [
+   "Cancún — Supermanzana 102",
+   "Playa del Carmen — Gonzalo Guerrero"
+  ],
+  "trabajos": [
+   {
+    "empresa": "LAVANDERÍA HOTELERA DEL CARIBE (ficticio)",
+    "contacto": "LIC. SANDRA COLLÍ",
+    "tel": "9980001511",
+    "que": "Cambio de cable (polipasto 5 t)",
+    "monto": 12500,
+    "refacc": "Sí"
+   },
+   {
+    "empresa": "CONSTRUCTORA RIVIERA (ficticio)",
+    "contacto": "ING. FERNANDO KU",
+    "tel": "9980001512",
+    "que": "Reparación de freno (grúa viajera 8 t)",
+    "monto": 19000,
+    "refacc": "No"
+   }
+  ]
+ },
+ {
+  "id": "PROV-9840001601",
+  "nombre": "HÉCTOR CHI MOO",
+  "contacto": "HÉCTOR CHI MOO",
+  "whatsapp": "9840001601",
+  "ciudad": "Playa del Carmen",
+  "estado": "Quintana Roo",
+  "giro": "Grúas",
+  "anios": "1 a 3 años",
+  "equipos": [
+   "Polipasto eléctrico de cadena"
+  ],
+  "capacidad": "3 a 5 t",
+  "servicios": [
+   "Mantenimiento preventivo",
+   "Tablero y contactores",
+   "Botonera y control remoto"
+  ],
+  "taller": "No",
+  "equipoN": 6,
+  "arnes": "Sí",
+  "factura": "No",
+  "urgencias": "Fines de semana y horario extendido",
+  "llegada": "Mismo día",
+  "visita": "$350",
+  "garantia": "30 días",
+  "pago": "Efectivo",
+  "estatus": "PENDIENTE",
+  "sucursales": [
+   "Cancún — Supermanzana 102",
+   "Playa del Carmen — Gonzalo Guerrero"
+  ],
+  "trabajos": [
+   {
+    "empresa": "BODEGA DE MATERIALES PLAYA (ficticio)",
+    "contacto": "SR. JULIO CAN",
+    "tel": "9840001611",
+    "que": "Cambio de botonera (polipasto 2 t)",
+    "monto": 2600,
+    "refacc": "Sí"
+   },
+   {
+    "empresa": "TALLER MARINO XCALACOCO (ficticio)",
+    "contacto": "SRA. ANA EK",
+    "tel": "9840001612",
+    "que": "Mantenimiento preventivo (polipasto 1 t)",
+    "monto": 1400,
+    "refacc": "No"
+   }
+  ]
+ }
+];
+
+const DEMO_CALIF = [
+ {
+  "prov": "PROV-2290000101",
+  "fecha": "2026-09-02",
+  "sucursal": "Veracruz — Col. Pedro I Mata (Matriz)",
+  "quien": "Alan Santoyo",
+  "puesto": "Regional",
+  "que": "trabajo",
+  "comentario": "Llegó en 2 horas y lo dejó funcionando el mismo día.",
+  "trabajo": "Cambio de contactores de la grúa 2",
+  "puntual": "Sí",
+  "calidad": 5,
+  "precio": 4,
+  "recontratar": "Sí"
+ },
+ {
+  "prov": "PROV-2290000101",
+  "fecha": "2026-09-20",
+  "sucursal": "Veracruz — Col. Centro",
+  "quien": "Gerente Veracruz Centro",
+  "puesto": "Gerente de sucursal",
+  "que": "trabajo",
+  "comentario": "",
+  "trabajo": "Mantenimiento preventivo",
+  "puntual": "Sí",
+  "calidad": 5,
+  "precio": 5,
+  "recontratar": "Sí"
+ },
+ {
+  "prov": "PROV-2290000101",
+  "fecha": "2026-10-08",
+  "sucursal": "Cosamaloapan — Col. Centro",
+  "quien": "Gerente Cosamaloapan",
+  "puesto": "Gerente de sucursal",
+  "que": "trabajo",
+  "comentario": "Llegó un día después de lo acordado, pero buen trabajo.",
+  "trabajo": "Revisión de freno",
+  "puntual": "Llegó tarde",
+  "calidad": 4,
+  "precio": 4,
+  "recontratar": "Sí"
+ },
+ {
+  "prov": "PROV-2290000102",
+  "fecha": "2026-10-10",
+  "sucursal": "Veracruz — Col. Ejido 1ro de Mayo (Sur)",
+  "quien": "Gerente Veracruz Sur",
+  "puesto": "Gerente de sucursal",
+  "que": "cotizo",
+  "comentario": "Cotizó $12,000 por un ajuste de freno.",
+  "motivo": "Precio alto"
+ },
+ {
+  "prov": "PROV-2280000201",
+  "fecha": "2026-08-21",
+  "sucursal": "Xalapa — Col. Rafael Lucio",
+  "quien": "Gerente Xalapa",
+  "puesto": "Gerente de sucursal",
+  "que": "trabajo",
+  "comentario": "Muy ordenado, dejó reporte con fotos.",
+  "trabajo": "Cambio de botonera radio",
+  "puntual": "Sí",
+  "calidad": 5,
+  "precio": 4,
+  "recontratar": "Sí"
+ },
+ {
+  "prov": "PROV-2280000201",
+  "fecha": "2026-10-03",
+  "sucursal": "José Cardel — Col. Centro",
+  "quien": "Alan Santoyo",
+  "puesto": "Regional",
+  "que": "trabajo",
+  "comentario": "",
+  "trabajo": "Mantenimiento preventivo",
+  "puntual": "Sí",
+  "calidad": 4,
+  "precio": 4,
+  "recontratar": "Sí"
+ },
+ {
+  "prov": "PROV-2710000401",
+  "fecha": "2026-09-10",
+  "sucursal": "Córdoba — Zona Industrial",
+  "quien": "Alan Santoyo",
+  "puesto": "Regional",
+  "que": "trabajo",
+  "comentario": "La botonera volvió a fallar a la semana.",
+  "trabajo": "Cambio de botonera",
+  "puntual": "Llegó tarde",
+  "calidad": 2,
+  "precio": 3,
+  "recontratar": "No"
+ },
+ {
+  "prov": "PROV-2720000501",
+  "fecha": "2026-09-25",
+  "sucursal": "Orizaba — Col. Centro",
+  "quien": "Gerente Orizaba Centro",
+  "puesto": "Gerente de sucursal",
+  "que": "trabajo",
+  "comentario": "Excelente, explicó todo lo que cambió.",
+  "trabajo": "Cambio de ruedas del trole",
+  "puntual": "Sí",
+  "calidad": 5,
+  "precio": 4,
+  "recontratar": "Sí"
+ },
+ {
+  "prov": "PROV-2710000402",
+  "fecha": "2026-10-14",
+  "sucursal": "Córdoba — Col. Centro",
+  "quien": "Gerente Córdoba Centro",
+  "puesto": "Gerente de sucursal",
+  "que": "no_vino",
+  "comentario": "Dijo que hasta la próxima semana.",
+  "motivo": "No tenía tiempo"
+ },
+ {
+  "prov": "PROV-2870000601",
+  "fecha": "2026-09-12",
+  "sucursal": "Tuxtepec — Col. del Carmen",
+  "quien": "Gerente Tuxtepec Carmen",
+  "puesto": "Gerente de sucursal",
+  "que": "trabajo",
+  "comentario": "Buen precio y cumplió.",
+  "trabajo": "Cambio de cable",
+  "puntual": "Sí",
+  "calidad": 4,
+  "precio": 5,
+  "recontratar": "Sí"
+ },
+ {
+  "prov": "PROV-9930000701",
+  "fecha": "2026-08-15",
+  "sucursal": "Villahermosa — Ciudad Industrial",
+  "quien": "Dionicio Morales",
+  "puesto": "Regional",
+  "que": "trabajo",
+  "comentario": "Muy profesional, entregó reporte con fotos. Algo caro.",
+  "trabajo": "Cambio de cable de la grúa principal",
+  "puntual": "Sí",
+  "calidad": 5,
+  "precio": 3,
+  "recontratar": "Sí"
+ },
+ {
+  "prov": "PROV-9930000701",
+  "fecha": "2026-10-01",
+  "sucursal": "Coatzacoalcos — Estero del Pantano",
+  "quien": "Gerente Estero del Pantano",
+  "puesto": "Gerente de sucursal",
+  "que": "cotizo",
+  "comentario": "Cotizó $45,000 por el cambio de ruedas.",
+  "motivo": "Precio alto"
+ },
+ {
+  "prov": "PROV-9930000701",
+  "fecha": "2026-10-12",
+  "sucursal": "Cárdenas — Carretera km 1.6",
+  "quien": "Dionicio Morales",
+  "puesto": "Regional",
+  "que": "trabajo",
+  "comentario": "",
+  "trabajo": "Mantenimiento preventivo",
+  "puntual": "Sí",
+  "calidad": 4,
+  "precio": 4,
+  "recontratar": "Sí"
+ },
+ {
+  "prov": "PROV-9210000801",
+  "fecha": "2026-10-15",
+  "sucursal": "Coatzacoalcos — Col. Benito Juárez",
+  "quien": "Gerente Benito Juárez",
+  "puesto": "Gerente de sucursal",
+  "que": "no_contesto",
+  "comentario": "Le marqué 2 veces en la mañana."
+ },
+ {
+  "prov": "PROV-9210000802",
+  "fecha": "2026-09-18",
+  "sucursal": "Minatitlán — Col. Nueva Mina",
+  "quien": "Gerente Minatitlán",
+  "puesto": "Gerente de sucursal",
+  "que": "trabajo",
+  "comentario": "Vinieron dos técnicos, terminaron en una tarde.",
+  "trabajo": "Cambio de cable y gancho",
+  "puntual": "Sí",
+  "calidad": 5,
+  "precio": 4,
+  "recontratar": "Sí"
+ },
+ {
+  "prov": "PROV-9210000802",
+  "fecha": "2026-10-06",
+  "sucursal": "Coatzacoalcos — Col. Benito Juárez",
+  "quien": "Gerente Benito Juárez",
+  "puesto": "Gerente de sucursal",
+  "que": "trabajo",
+  "comentario": "",
+  "trabajo": "Revisión de tablero",
+  "puntual": "Llegó tarde",
+  "calidad": 4,
+  "precio": 4,
+  "recontratar": "Sí"
+ },
+ {
+  "prov": "PROV-9370001101",
+  "fecha": "2026-10-09",
+  "sucursal": "Comalcalco — Col. Santa Amalia Zona Industrial",
+  "quien": "Gerente Comalcalco",
+  "puesto": "Gerente de sucursal",
+  "que": "trabajo",
+  "comentario": "",
+  "trabajo": "Cambio de contactores",
+  "puntual": "Sí",
+  "calidad": 4,
+  "precio": 5,
+  "recontratar": "Sí"
+ },
+ {
+  "prov": "PROV-9610001201",
+  "fecha": "2026-09-05",
+  "sucursal": "Tuxtla Gutiérrez — Loma Larga",
+  "quien": "Dionicio Morales",
+  "puesto": "Regional",
+  "que": "trabajo",
+  "comentario": "Rápido y con garantía por escrito.",
+  "trabajo": "Cambio de motor de elevación",
+  "puntual": "Sí",
+  "calidad": 5,
+  "precio": 4,
+  "recontratar": "Sí"
+ },
+ {
+  "prov": "PROV-9990001401",
+  "fecha": "2026-08-28",
+  "sucursal": "Mérida — Ciudad Industrial",
+  "quien": "Erik Vargas",
+  "puesto": "Regional",
+  "que": "trabajo",
+  "comentario": "",
+  "trabajo": "Mantenimiento preventivo",
+  "puntual": "Sí",
+  "calidad": 5,
+  "precio": 4,
+  "recontratar": "Sí"
+ },
+ {
+  "prov": "PROV-9990001401",
+  "fecha": "2026-10-11",
+  "sucursal": "Mérida — Sambulá",
+  "quien": "Gerente Sambulá",
+  "puesto": "Gerente de sucursal",
+  "que": "trabajo",
+  "comentario": "Bien hecho, un poco caro.",
+  "trabajo": "Cambio de cable",
+  "puntual": "Sí",
+  "calidad": 4,
+  "precio": 3,
+  "recontratar": "Sí"
+ },
+ {
+  "prov": "PROV-9980001501",
+  "fecha": "2026-10-02",
+  "sucursal": "Cancún — Supermanzana 102",
+  "quien": "Erik Vargas",
+  "puesto": "Regional",
+  "que": "no_contesto",
+  "comentario": ""
+ },
+ {
+  "prov": "PROV-9980001501",
+  "fecha": "2026-10-04",
+  "sucursal": "Cancún — Supermanzana 102",
+  "quien": "Erik Vargas",
+  "puesto": "Regional",
+  "que": "trabajo",
+  "comentario": "La primera vez no contestó, la segunda vino el mismo día.",
+  "trabajo": "Ajuste de freno",
+  "puntual": "Sí",
+  "calidad": 4,
+  "precio": 4,
+  "recontratar": "Sí"
+ }
+];
+
+const MODO_DEMO = !API_BUSCAR;
+let PROVEEDORES = MODO_DEMO ? DEMO_PROVEEDORES : [];
+let CALIF = MODO_DEMO ? DEMO_CALIF : [];
+if(!MODO_DEMO){ const bd = document.getElementById('bannerDemo'); if(bd) bd.remove(); }
+
+const MOTIVOS = {
+  no_vino: ["No tenía tiempo","Le quedaba lejos","No le interesó el trabajo","Otro"],
+  cotizo:  ["Precio alto","Tardaba mucho en venir","Encontramos otra opción","Otro"],
+};
+const QUE_TXT = { trabajo:"✅ Hizo el trabajo", no_contesto:"📵 No contestó", no_vino:"🚫 Contestó pero no vino", cotizo:"💲 Cotizó, no se contrató" };
+
+// ---------- Utilidades ----------
+const $ = (s, el=document) => el.querySelector(s);
+const $$ = (s, el=document) => Array.from(el.querySelectorAll(s));
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmtMonto = n => '$' + Number(n).toLocaleString('es-MX');
+const fmtFecha = f => { f = String(f || ''); if(!/^\d{4}-\d{2}-\d{2}/.test(f)) return f; const [y,m,d] = f.slice(0,10).split('-'); return `${d}/${m}/${y}`; };
+const hoy = () => new Date().toISOString().slice(0,10);
+function guardarLocal(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+function leerLocal(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+
+// ---------- Semáforo (mismas reglas que n8n) ----------
+const ANIOS_NUM = {"Menos de 1 año":0,"1 a 3 años":1,"3 a 5 años":3,"5 a 10 años":5,"Más de 10 años":10};
+function semaforo(p){
+  const rojo = [];
+  if(ANIOS_NUM[p.anios] < 1) rojo.push('Menos de 1 año de experiencia');
+  if(!p.equipos.some(e => /viajera|Polipasto/i.test(e))) rojo.push('No ha reparado grúas viajeras ni polipastos');
+  if(p.arnes !== 'Sí') rojo.push('No tiene arnés');
+  if(rojo.length) return { color:'rojo', texto:'Descartado', motivos:rojo };
+  const falta = [];
+  if(ANIOS_NUM[p.anios] < 3) falta.push('Menos de 3 años de experiencia');
+  if(p.factura !== 'Sí') falta.push('No factura');
+  if(p.equipoN < 7) falta.push(`Tiene ${p.equipoN} de 10 herramientas básicas`);
+  if(!['Mismo día','24 horas'].includes(p.llegada)) falta.push('Tarda más de 24 h en llegar');
+  return falta.length ? { color:'amarillo', texto:'Revisar', motivos:falta } : { color:'verde', texto:'Recomendado', motivos:[] };
+}
+
+// ---------- Historial de calificaciones ----------
+function historial(p){
+  const h = CALIF.filter(c => c.prov === p.id).sort((a,b) => b.fecha.localeCompare(a.fecha));
+  const trabajos = h.filter(c => c.que === 'trabajo');
+  const prom = k => trabajos.length ? trabajos.reduce((s,c) => s + c[k], 0) / trabajos.length : null;
+  return {
+    lista: h,
+    nTrabajos: trabajos.length,
+    calidad: prom('calidad'),
+    precio: prom('precio'),
+    contactos: h.length,
+    contesto: h.filter(c => c.que !== 'no_contesto').length,
+    recontratar: trabajos.length ? Math.round(trabajos.filter(c => c.recontratar === 'Sí').length / trabajos.length * 100) : null,
+  };
+}
+const estrellas = v => '★'.repeat(Math.round(v)) + '☆'.repeat(5 - Math.round(v));
+
+// ---------- Quién califica (se recuerda en este dispositivo) ----------
+let USUARIO = leerLocal('pylsa_buscador_usuario') || { nombre:'', puesto:'' };
+
+// ---------- Selector de sucursales ----------
+const sel = $('#selSucursal');
+Object.entries(SUCURSALES).forEach(([estado, sucs]) => {
+  const g = document.createElement('optgroup'); g.label = estado;
+  sucs.forEach(s => g.appendChild(new Option(s, s)));
+  sel.appendChild(g);
+});
+const ultima = leerLocal('pylsa_buscador_sucursal');
+sel.value = ultima || "Coatzacoalcos — Col. Benito Juárez";
+
+// ---------- Búsqueda y tarjetas ----------
+function ordenar(a, b){
+  const ha = historial(a), hb = historial(b);
+  const sa = semaforo(a), sb = semaforo(b);
+  const rango = s => ({verde:0, amarillo:1, rojo:2})[s.color];
+  // 1) grupo: bien calificados (≥3★) → sin calificaciones → mal calificados (<3★)
+  const grupo = h => h.calidad === null ? 1 : (h.calidad >= 3 ? 0 : 2);
+  if(grupo(ha) !== grupo(hb)) return grupo(ha) - grupo(hb);
+  // Promedio ponderado para ordenar: con pocos trabajos pesa menos (2 trabajos "virtuales" de 3.5★)
+  const peso = h => (h.calidad * h.nTrabajos + 3.5 * 2) / (h.nTrabajos + 2);
+  if(ha.calidad !== null && peso(ha) !== peso(hb)) return peso(hb) - peso(ha);
+  // 2) semáforo
+  if(rango(sa) !== rango(sb)) return rango(sa) - rango(sb);
+  // 3) validados antes que pendientes
+  return (a.estatus === 'APTO' ? 0 : 1) - (b.estatus === 'APTO' ? 0 : 1);
+}
+
+function tarjeta(p, sucursal){
+  const s = semaforo(p), h = historial(p);
+  const chipEst = p.estatus === 'APTO' ? '<span class="chip apto">✔ Validado</span>'
+                : p.estatus === 'NO APTO' ? '<span class="chip noapto">No apto</span>'
+                : '<span class="chip pend">Sin validar</span>';
+  const stats = h.contactos ? `<div class="stats">
+      ${h.nTrabajos ? `<span><span class="estrellas">${estrellas(h.calidad)}</span> <b>${h.calidad.toFixed(1)}</b> en ${h.nTrabajos} trabajo${h.nTrabajos>1?'s':''}</span>` : ''}
+      <span>Contestó <b>${h.contesto} de ${h.contactos}</b> ${h.contactos === 1 ? 'vez' : 'veces'}</span>
+      ${h.recontratar !== null ? `<span><b>${h.recontratar}%</b> lo volvería a contratar</span>` : ''}
+    </div>` : `<div class="sin-calif">Todavía sin calificaciones de PYLSA</div>`;
+  const ult = h.lista.find(c => c.comentario);
+  const msg = encodeURIComponent(`Hola ${p.contacto.split(' ')[0]}, te contacto de PYLSA Acero, sucursal ${sucursal}. Vimos tu registro como técnico de grúas y necesitamos un servicio.`);
+  return `<article class="tec ${s.color}" data-id="${p.id}">
+    <div class="tec-top"><span class="chip ${s.color}">${s.color==='verde'?'🟢':s.color==='amarillo'?'🟡':'🔴'} ${s.texto}</span>${chipEst}</div>
+    <h4>${esc(p.nombre)}</h4>
+    <div class="sub">${esc(p.ciudad)}, ${esc(p.estado)} · ${esc(p.anios)} de experiencia · capacidad máx.: ${esc(p.capacidad)}</div>
+    ${stats}
+    ${s.motivos.length ? `<div class="falta ${s.color==='rojo'?'r':''}">${s.color==='rojo'?'Motivo':'Le falta'}: ${s.motivos.map(esc).join(' · ')}</div>` : ''}
+    ${p.estatus === 'PENDIENTE' && s.color !== 'rojo' ? `<div class="validar-box"><div><b>⚠️ Sin validar</b>Antes de contratarlo, llama a sus referencias.</div><button class="btn-validar" data-validar="${p.id}">Validar ahora</button></div>` : ''}
+    ${p.validacion ? `<div class="validado-por">${p.estatus === 'APTO' ? '✔ Validado' : p.estatus === 'NO APTO' ? '✘ Marcado no apto' : '⏳ Intento de validación'} por ${esc(p.validacion.quien)} · ${fmtFecha(p.validacion.fecha)}${p.validacion.comentario ? ' · “' + esc(p.validacion.comentario) + '”' : ''}</div>` : ''}
+    ${p.comentarioValidacion ? `<div class="falta r">Validación: ${esc(p.comentarioValidacion)}</div>` : ''}
+    ${ult ? `<div class="ultimo">“${esc(ult.comentario)}”<small>${esc(ult.quien)} · ${esc(String(ult.sucursal || '').split(' — ')[0])} · ${fmtFecha(ult.fecha)}</small></div>` : ''}
+    <div class="acciones">
+      <a class="btn-wa" href="https://wa.me/52${p.whatsapp}?text=${msg}" target="_blank" rel="noopener">WhatsApp</a>
+      <button class="btn-calif" data-calificar="${p.id}">Calificar</button>
+      <button class="btn-detalle" data-detalle="${p.id}">Ver detalle y referencias ▾</button>
+    </div>
+    <div class="detalle" id="det-${p.id}">${detalle(p, h)}</div>
+  </article>`;
+}
+
+function detalle(p, h){
+  const fila = (k, v) => `<tr><td>${k}</td><td>${esc(v)}</td></tr>`;
+  let html = `<h5>Datos del técnico</h5><table>
+    ${fila('Contacto', p.contacto)}${fila('WhatsApp', p.whatsapp)}
+    ${fila('Equipos que repara', p.equipos.join(', '))}${fila('Sabe hacer', p.servicios.join(', '))}
+    ${fila('Taller', p.taller)}${fila('Equipo básico', p.equipoN + ' de 10 herramientas')}${fila('Factura', p.factura)}
+    ${fila('Urgencias', p.urgencias)}${fila('Tiempo de llegada', p.llegada)}${fila('Visita de diagnóstico', p.visita)}
+    ${fila('Garantía', p.garantia)}${fila('Formas de pago', p.pago)}</table>${p.carpeta ? `<p><a href="${esc(p.carpeta)}" target="_blank" rel="noopener">📁 Ver fotos y documentos</a></p>` : ''}`;
+  html += `<h5>Trabajos que declaró (para pedir referencias)</h5>` + p.trabajos.map(t => `<div class="trabajo">
+      <b>${esc(t.empresa)}</b>${esc(t.que)}<br>
+      ${esc(t.contacto)} · <a href="tel:${t.tel}">${t.tel}</a><br>
+      <small>Cobró ${fmtMonto(t.monto)} ${t.refacc === 'Sí' ? 'con refacciones' : 'solo mano de obra'}</small>${t.resultado ? `<br><b style="display:inline;font-size:12px;">Referencia: ${REF_TXT[t.resultado]}</b>` : ''}</div>`).join('');
+  html += `<h5>Historial en PYLSA</h5>` + (h.lista.length ? h.lista.map(c => `<div class="hist">
+      <b>${QUE_TXT[c.que]}</b>${c.que==='trabajo' ? ` · ${'★'.repeat(c.calidad)} · ${esc(c.trabajo)}` : ''}${c.motivo ? ` · ${esc(c.motivo)}` : ''}<br>
+      ${c.comentario ? `“${esc(c.comentario)}”<br>` : ''}<small>${esc(c.quien)} (${esc(c.puesto)}) · ${esc(c.sucursal)} · ${fmtFecha(c.fecha)}</small></div>`).join('')
+    : '<div class="hist"><small>Sin registros todavía.</small></div>');
+  return html;
+}
+
+let ULTIMA_BUSQUEDA = null;
+async function cargar(params){
+  if(MODO_DEMO) return true;
+  $('#resultados').innerHTML = '<div class="vacio">Buscando técnicos…</div>';
+  try{
+    const r = await fetch(API_BUSCAR + '?' + new URLSearchParams(params));
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    PROVEEDORES = d.proveedores || []; CALIF = d.calif || [];
+    return true;
+  }catch(e){
+    $('#resultados').innerHTML = '<div class="vacio">No se pudo cargar la información. Revisa tu conexión e inténtalo de nuevo.</div>';
+    return false;
+  }
+}
+async function enviarAccion(datos){
+  if(MODO_DEMO) return true;
+  try{
+    const r = await fetch(API_ACCION, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(datos) });
+    return r.ok;
+  }catch(e){ return false; }
+}
+async function buscar(){
+  const sucursal = sel.value;
+  $('#fSucursal').classList.toggle('error', !sucursal);
+  if(!sucursal) return;
+  guardarLocal('pylsa_buscador_sucursal', sucursal);
+  const giro = $('input[name=giro]:checked').value;
+  ULTIMA_BUSQUEDA = { sucursal, giro };
+  $('#btnBuscar').disabled = true;
+  const ok = await cargar({ sucursal, giro });
+  $('#btnBuscar').disabled = false;
+  if(ok) pintar();
+}
+function pintar(){
+  if(!ULTIMA_BUSQUEDA) return;
+  const { sucursal, giro } = ULTIMA_BUSQUEDA;
+  const cubren = PROVEEDORES.filter(p => p.giro === giro && p.sucursales.includes(sucursal));
+  const activos = cubren.filter(p => p.estatus !== 'NO APTO' && semaforo(p).color !== 'rojo').sort(ordenar);
+  const otros = cubren.filter(p => !activos.includes(p));
+  let html = `<div class="resultados-head"><h3>${activos.length} técnico${activos.length===1?'':'s'} de ${esc(giro.toLowerCase())}</h3><span>${esc(sucursal)}</span></div>`;
+  if(activos.length){
+    html += `<div class="leyenda"><span><i style="background:var(--verde)"></i>Recomendado</span><span><i style="background:#E0A800"></i>Revisar lo que le falta</span><span>✔ Validado por PYLSA</span></div>`;
+    html += activos.map(p => tarjeta(p, sucursal)).join('');
+  } else {
+    html += `<div class="vacio">Todavía no hay técnicos de ${esc(giro.toLowerCase())} que cubran esta sucursal.<br>Comparte el enlace de registro con técnicos de tu zona.<br><button id="btnCopiar">Copiar enlace de registro</button></div>`;
+  }
+  if(otros.length){
+    html += `<div class="otros"><button id="btnOtros">Ver no aptos y descartados (${otros.length}) ▾</button><div class="otros-lista" id="otrosLista">${otros.map(p => tarjeta(p, sucursal)).join('')}</div></div>`;
+  }
+  $('#resultados').innerHTML = html;
+  const bc = $('#btnCopiar');
+  if(bc) bc.onclick = async () => {
+    try{ await navigator.clipboard.writeText(ENLACE_REGISTRO); toast('Enlace copiado. Compártelo por WhatsApp o Facebook.'); }
+    catch(e){ toast('Enlace de registro: ' + ENLACE_REGISTRO); }
+  };
+  const bo = $('#btnOtros');
+  if(bo) bo.onclick = () => $('#otrosLista').classList.toggle('abierto');
+}
+$('#btnBuscar').onclick = buscar;
+
+$('#resultados').addEventListener('click', e => {
+  const d = e.target.closest('[data-detalle]');
+  if(d){
+    const box = $('#det-' + d.dataset.detalle);
+    box.classList.toggle('abierto');
+    d.textContent = box.classList.contains('abierto') ? 'Ocultar detalle ▴' : 'Ver detalle y referencias ▾';
+  }
+  const v = e.target.closest('[data-validar]');
+  if(v) abrirValidar(v.dataset.validar);
+  const c = e.target.closest('[data-calificar]');
+  if(c) abrirModal(c.dataset.calificar);
+});
+
+// ---------- Calificar ----------
+let PROV_ACTUAL = null, ESTRELLAS = { calidad:0, precio:0 };
+$$('[data-stars]').forEach(box => {
+  for(let i = 1; i <= 5; i++){
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = '★'; b.setAttribute('aria-label', i + ' de 5');
+    b.onclick = () => {
+      ESTRELLAS[box.dataset.stars] = i;
+      $$('button', box).forEach((x, j) => x.classList.toggle('on', j < i));
+      box.closest('.field').classList.remove('error');
+    };
+    box.appendChild(b);
+  }
+});
+function abrirModal(id){
+  PROV_ACTUAL = PROVEEDORES.find(p => p.id === id);
+  $('#mPara').textContent = PROV_ACTUAL.nombre;
+  const ms = $('#mSucursal'); ms.innerHTML = '';
+  PROV_ACTUAL.sucursales.forEach(s => ms.add(new Option(s, s)));
+  ms.value = ULTIMA_BUSQUEDA ? ULTIMA_BUSQUEDA.sucursal : PROV_ACTUAL.sucursales[0];
+  $$('#modal input[type=radio]').forEach(r => r.checked = false);
+  $('#mTrabajo').value = ''; $('#mComentario').value = '';
+  $('#mQuien').value = USUARIO.nombre || '';
+  if(USUARIO.puesto){ const r = $(`input[name=mPuesto][value="${USUARIO.puesto}"]`); if(r) r.checked = true; }
+  ESTRELLAS = { calidad:0, precio:0 };
+  $$('[data-stars] button').forEach(b => b.classList.remove('on'));
+  $$('#modal .field').forEach(f => f.classList.remove('error'));
+  $('#mBloqueTrabajo').hidden = true; $('#mfMotivo').hidden = true;
+  $('#modal').classList.add('abierto');
+  document.body.style.overflow = 'hidden';
+}
+function cerrarModal(){ $('#modal').classList.remove('abierto'); document.body.style.overflow = ''; }
+$('#mCancelar').onclick = cerrarModal;
+$('#modal').addEventListener('click', e => { if(e.target.id === 'modal') cerrarModal(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape'){ cerrarModal(); cerrarValidar(); } });
+$$('input[name=mQue]').forEach(r => r.addEventListener('change', () => {
+  const v = r.value;
+  $('#mfQue').classList.remove('error');
+  $('#mBloqueTrabajo').hidden = v !== 'trabajo';
+  $('#mfMotivo').hidden = !MOTIVOS[v];
+  if(MOTIVOS[v]){
+    const m = $('#mMotivo'); m.innerHTML = '<option value="">Selecciona…</option>';
+    MOTIVOS[v].forEach(x => m.add(new Option(x, x)));
+  }
+}));
+$('#modal').addEventListener('change', e => { const f = e.target.closest('.field'); if(f) f.classList.remove('error'); });
+// Al escribir se quita el aviso de error en ese momento (y no al tocar otro campo, que desplazaría la ficha bajo el dedo)
+$('#modal').addEventListener('input', e => { const f = e.target.closest('.field'); if(f) f.classList.remove('error'); });
+
+$('#mGuardar').onclick = () => {
+  const que = ($('input[name=mQue]:checked') || {}).value;
+  let ok = true;
+  const marca = (id, cond) => { $(id).classList.toggle('error', !cond); if(!cond) ok = false; };
+  marca('#mfQue', !!que);
+  const quien = $('#mQuien').value.trim();
+  const puesto = ($('input[name=mPuesto]:checked') || {}).value;
+  marca('#mfQuien', !!quien); marca('#mfPuesto', !!puesto);
+  const c = { prov: PROV_ACTUAL.id, fecha: hoy(), sucursal: $('#mSucursal').value, quien, puesto, que, comentario: $('#mComentario').value.trim() };
+  if(que === 'trabajo'){
+    c.trabajo = $('#mTrabajo').value.trim();
+    c.puntual = ($('input[name=mPuntual]:checked') || {}).value;
+    c.calidad = ESTRELLAS.calidad; c.precio = ESTRELLAS.precio;
+    c.recontratar = ($('input[name=mRecontratar]:checked') || {}).value;
+    marca('#mfTrabajo', !!c.trabajo); marca('#mfPuntual', !!c.puntual);
+    marca('#mfCalidad', c.calidad > 0); marca('#mfPrecio', c.precio > 0); marca('#mfRecontratar', !!c.recontratar);
+  }
+  if(MOTIVOS[que]) c.motivo = $('#mMotivo').value;
+  if(!ok){ const f = $('#modal .field.error'); if(f) f.scrollIntoView({behavior:'smooth', block:'center'}); return; }
+
+  USUARIO = { nombre: quien, puesto };
+  guardarLocal('pylsa_buscador_usuario', USUARIO);
+  CALIF.push(c);
+  cerrarModal();
+  // Alertas que en producción enviaría n8n por correo
+  const h = historial(PROV_ACTUAL);
+  const ultimas2 = h.lista.slice(0, 2);
+  const alertas = [];
+  if(c.recontratar === 'No') alertas.push('no lo volverían a contratar');
+  if(ultimas2.length === 2 && ultimas2.every(x => x.que === 'no_contesto')) alertas.push('no contestó 2 veces seguidas');
+  if(h.calidad !== null && h.calidad < 3) alertas.push(`su promedio bajó a ${h.calidad.toFixed(1)} ★`);
+  pintar();
+  enviarAccion({ accion:'calificar', nombre: PROV_ACTUAL.nombre, alertas, ...c }).then(ok => {
+    if(!ok) toast('⚠️ No se pudo guardar en el servidor. Revisa tu conexión e inténtalo de nuevo.', true);
+    else if(alertas.length) toast(`Guardado. 📧 Se avisó a Daniel: ${alertas.join(' y ')}.`, true);
+    else toast('Calificación guardada. ¡Gracias!');
+  });
+};
+
+// ---------- Validar ----------
+const REF_TXT = { ok:'✔ Lo recomienda', mal:'✘ No lo recomienda o no lo conoce', no_contesto:'📵 No contestó' };
+let PROV_VAL = null;
+function abrirValidar(id){
+  PROV_VAL = PROVEEDORES.find(p => p.id === id);
+  $('#vPara').textContent = PROV_VAL.nombre + ' · ' + PROV_VAL.ciudad;
+  $('#vRefs').innerHTML = PROV_VAL.trabajos.map((t, i) => `<div class="ref-val" data-ref="${i}">
+      <b>${esc(t.empresa)}</b>
+      <small>${esc(t.que)} · cobró ${fmtMonto(t.monto)}</small>
+      ${esc(t.contacto)}<br>
+      <a class="tel" href="tel:${t.tel}">📞 ${t.tel}</a>
+      <div class="opciones">
+        ${Object.entries(REF_TXT).map(([k, txt]) => `<label class="opcion"><input type="radio" name="vRef${i}" value="${k}"><span>${txt}</span></label>`).join('')}
+      </div>
+    </div>`).join('');
+  $$('#modalVal input[name=vDecision]').forEach(r => r.checked = false);
+  $('#vComentario').value = '';
+  $('#vQuien').value = USUARIO.nombre || '';
+  $$('input[name=vPuesto]').forEach(r => r.checked = r.value === USUARIO.puesto);
+  $$('#modalVal .error').forEach(x => x.classList.remove('error'));
+  $('#vAvisoApto').classList.remove('on');
+  $('#modalVal').classList.add('abierto');
+  document.body.style.overflow = 'hidden';
+}
+function cerrarValidar(){ $('#modalVal').classList.remove('abierto'); document.body.style.overflow = ''; }
+$('#vCancelar').onclick = cerrarValidar;
+$('#modalVal').addEventListener('click', e => { if(e.target.id === 'modalVal') cerrarValidar(); });
+$('#modalVal').addEventListener('change', e => {
+  const r = e.target.closest('.ref-val, .field'); if(r) r.classList.remove('error');
+  if(e.target.name === 'vDecision' || e.target.name.startsWith('vRef')) $('#vAvisoApto').classList.remove('on');
+});
+$('#modalVal').addEventListener('input', e => { const f = e.target.closest('.field'); if(f) f.classList.remove('error'); });
+
+$('#vGuardar').onclick = () => {
+  let ok = true;
+  const refs = PROV_VAL.trabajos.map((t, i) => {
+    const sel = ($(`input[name=vRef${i}]:checked`) || {}).value;
+    $(`.ref-val[data-ref="${i}"]`).classList.toggle('error', !sel);
+    if(!sel) ok = false;
+    return sel;
+  });
+  const decision = ($('input[name=vDecision]:checked') || {}).value;
+  const quien = $('#vQuien').value.trim();
+  const puesto = ($('input[name=vPuesto]:checked') || {}).value;
+  $('#vfDecision').classList.toggle('error', !decision); if(!decision) ok = false;
+  $('#vfQuien').classList.toggle('error', !quien); if(!quien) ok = false;
+  $('#vfPuesto').classList.toggle('error', !puesto); if(!puesto) ok = false;
+  if(ok && decision === 'APTO' && !refs.includes('ok')){ $('#vAvisoApto').classList.add('on'); ok = false; }
+  if(!ok){ const f = $('#modalVal .error, #vAvisoApto.on'); if(f) f.scrollIntoView({behavior:'smooth', block:'center'}); return; }
+
+  PROV_VAL.trabajos.forEach((t, i) => t.resultado = refs[i]);
+  PROV_VAL.estatus = decision;
+  PROV_VAL.validacion = { quien, puesto, fecha: hoy(), comentario: $('#vComentario').value.trim() };
+  USUARIO = { nombre: quien, puesto }; guardarLocal('pylsa_buscador_usuario', USUARIO);
+  cerrarValidar();
+  pintar();
+  enviarAccion({ accion:'validar', id: PROV_VAL.id, nombre: PROV_VAL.nombre, decision, quien, puesto, fecha: hoy(),
+    comentario: PROV_VAL.validacion.comentario, refs: PROV_VAL.trabajos.map((t, i) => ({ num: t.num || i + 1, resultado: refs[i] })) })
+    .then(ok => { if(!ok) toast('⚠️ No se pudo guardar la validación. Revisa tu conexión e inténtalo de nuevo.', true); });
+  toast(decision === 'APTO' ? `✔ ${PROV_VAL.nombre} quedó validado como APTO.`
+      : decision === 'NO APTO' ? `✘ ${PROV_VAL.nombre} quedó como NO APTO y pasa al final.`
+      : 'Guardado. Sigue pendiente de validar.', decision === 'NO APTO');
+};
+
+let toastT;
+function toast(txt, alerta){
+  const t = $('#toast');
+  t.textContent = txt; t.classList.toggle('alerta', !!alerta); t.classList.add('on');
+  clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), alerta ? 5200 : 3200);
+}
+
+// ---------- Enlace desde el correo (?id=PROV-...) ----------
+(async () => {
+  const id = new URLSearchParams(location.search).get('id');
+  if(!id) return;
+  const ok = await cargar({ id });
+  if(!ok) return;
+  const p = PROVEEDORES.find(x => x.id === id);
+  if(!p){ $('#resultados').innerHTML = '<div class="vacio">No se encontró ese técnico.</div>'; return; }
+  const suc = p.sucursales.includes(sel.value) ? sel.value : (p.sucursales[0] || sel.value);
+  sel.value = suc;
+  ULTIMA_BUSQUEDA = { sucursal: suc, giro: p.giro };
+  const r = $(`input[name=giro][value="${p.giro}"]`); if(r) r.checked = true;
+  pintar();
+  if(p.estatus === 'PENDIENTE' && semaforo(p).color !== 'rojo') abrirValidar(p.id);
+})();
+</script>
+</body>
+</html>
