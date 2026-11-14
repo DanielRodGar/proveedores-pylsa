@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PYLSA Acero — Registro de técnicos de grúas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --charcoal:#1F2428;
+    --steel:#3D4C5C;
+    --steel-light:#5A6E82;
+    --ember:#C1502E;
+    --paper:#F5F3EE;
+    --slate:#6B7280;
+    --line:#D8D3C8;
+    --white:#FFFFFF;
+    --danger:#B3261E;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    font-family:'Inter',sans-serif;
+    color:var(--charcoal);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:32px 16px 64px;
+  }
+  .card{
+    width:100%;
+    max-width:640px;
+    background:var(--white);
+    border:1px solid var(--line);
+    position:relative;
+  }
+  .card::before{
+    content:"";
+    position:absolute;
+    top:0;left:0;right:0;
+    height:6px;
+    background:linear-gradient(90deg,var(--steel) 0%,var(--steel) 70%,var(--ember) 70%,var(--ember) 100%);
+  }
+  .plate{
+    background:var(--charcoal);
+    color:var(--paper);
+    padding:28px 32px 22px;
+    position:relative;
+  }
+  .plate::after{
+    content:"";
+    position:absolute;
+    top:10px;left:10px;
+    width:6px;height:6px;
+    border-radius:50%;
+    background:var(--steel-light);
+    box-shadow:
+      calc(100% - 32px) 0 0 var(--steel-light),
+      0 calc(100% - 32px) 0 var(--steel-light),
+      calc(100% - 32px) calc(100% - 32px) 0 var(--steel-light);
+  }
+  .plate h1{
+    font-family:'Oswald',sans-serif;
+    font-size:22px;
+    font-weight:700;
+    letter-spacing:0.02em;
+    margin:0 0 4px;
+    text-transform:uppercase;
+  }
+  .plate p{
+    margin:0;
+    font-size:13px;
+    color:#B8C2CC;
+  }
+  .gauge{
+    display:flex;
+    padding:0 32px;
+    background:var(--white);
+    border-bottom:1px solid var(--line);
+  }
+  .gauge-step{
+    flex:1;
+    padding:14px 0;
+    text-align:center;
+    font-family:'Oswald',sans-serif;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--slate);
+    border-bottom:3px solid var(--line);
+    transition:all .25s ease;
+  }
+  .gauge-step.active{
+    color:var(--charcoal);
+    border-bottom-color:var(--ember);
+  }
+  .gauge-step.done{
+    color:var(--steel);
+    border-bottom-color:var(--steel);
+  }
+  form{padding:28px 32px 32px;}
+  .step{display:none;}
+  .step.active{display:block;animation:fade .3s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+  .step h2{
+    font-family:'Oswald',sans-serif;
+    font-size:17px;
+    text-transform:uppercase;
+    letter-spacing:0.03em;
+    margin:0 0 20px;
+    color:var(--steel);
+    border-left:3px solid var(--ember);
+    padding-left:10px;
+  }
+  .field{margin-bottom:18px;}
+  .field-row-3{
+    display:grid;
+    grid-template-columns:repeat(3, minmax(0, 1fr));
+    gap:10px;
+    margin-bottom:18px;
+  }
+  .field-row-3 .field{margin-bottom:0;}
+  label{
+    display:block;
+    font-size:13px;
+    font-weight:600;
+    margin-bottom:6px;
+    color:var(--charcoal);
+  }
+  .hint{
+    font-size:12px;
+    color:var(--slate);
+    margin-top:4px;
+  }
+  .cv-callout{
+    display:flex;
+    gap:12px;
+    align-items:flex-start;
+    background:#FBEDE7;
+    border:1px solid var(--ember);
+    border-left:4px solid var(--ember);
+    border-radius:6px;
+    padding:14px 16px;
+    margin-bottom:12px;
+  }
+  .cv-callout-icon{
+    font-size:22px;
+    line-height:1;
+    flex-shrink:0;
+  }
+  .cv-callout-text strong{
+    display:block;
+    font-size:14px;
+    color:var(--charcoal);
+    margin-bottom:4px;
+  }
+  .cv-callout-text p{
+    font-size:13px;
+    color:var(--steel);
+    margin:0;
+    line-height:1.4;
+  }
+  .cv-upload-label{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    background:var(--steel);
+    color:var(--white);
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    padding:11px 18px;
+    border-radius:6px;
+    cursor:pointer;
+    transition:background 0.15s ease;
+  }
+  .cv-upload-label:hover{
+    background:var(--charcoal);
+  }
+  .cv-upload-label:before{
+    content:"📎";
+    font-size:16px;
+  }
+  input[type=text],input[type=number],input[type=email],input[type=tel],select,textarea{
+    width:100%;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    color:var(--charcoal);
+    border-radius:2px;
+  }
+  input:focus,select:focus,textarea:focus{
+    outline:none;
+    border-color:var(--steel);
+    background:var(--white);
+  }
+  textarea{resize:vertical;min-height:64px;}
+  .radio-group{display:flex;flex-wrap:wrap;gap:8px;}
+  .radio-opt{
+    position:relative;
+  }
+  .radio-opt input{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer;margin:0;}
+  .radio-opt label{
+    display:block;
+    padding:8px 14px;
+    border:1px solid var(--line);
+    font-size:13px;
+    font-weight:500;
+    color:var(--steel);
+    cursor:pointer;
+    margin:0;
+    border-radius:2px;
+    transition:all .15s ease;
+  }
+  .radio-opt input:checked + label{
+    background:var(--steel);
+    border-color:var(--steel);
+    color:var(--white);
+  }
+  /* Checkbox personalizado para el Aviso de Privacidad */
+  .privacidad-check{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .privacidad-check input{
+    position:absolute;
+    opacity:0;
+    width:0;
+    height:0;
+  }
+  .privacidad-check .box{
+    flex-shrink:0;
+    width:22px;
+    height:22px;
+    margin-top:1px;
+    border:2px solid var(--line);
+    border-radius:4px;
+    background:var(--white);
+    position:relative;
+    transition:all .15s ease;
+  }
+  .privacidad-check .box::after{
+    content:"";
+    position:absolute;
+    display:none;
+    left:6px;
+    top:2px;
+    width:6px;
+    height:11px;
+    border:solid var(--white);
+    border-width:0 2px 2px 0;
+    transform:rotate(45deg);
+  }
+  .privacidad-check input:checked + .box{
+    background:var(--steel);
+    border-color:var(--steel);
+  }
+  .privacidad-check input:checked + .box::after{
+    display:block;
+  }
+  .privacidad-check:hover .box{
+    border-color:var(--steel-light);
+  }
+  .privacidad-check input:focus-visible + .box{
+    outline:2px solid var(--ember);
+    outline-offset:2px;
+  }
+  .privacidad-check .texto{
+    font-size:13px;
+    font-weight:400;
+    color:var(--charcoal);
+    line-height:1.4;
+  }
+  .field.error .privacidad-check .box{
+    border-color:var(--danger);
+  }
+  .nav-buttons{
+    display:flex;
+    justify-content:space-between;
+    margin-top:28px;
+    gap:12px;
+  }
+  button{
+    font-family:'Oswald',sans-serif;
+    font-size:13px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    font-weight:600;
+    padding:12px 24px;
+    border:none;
+    border-radius:2px;
+    cursor:pointer;
+    transition:background .15s ease;
+  }
+  .btn-next{background:var(--charcoal);color:var(--white);margin-left:auto;}
+  .btn-next:hover{background:var(--steel);}
+  .btn-back{background:transparent;color:var(--slate);border:1px solid var(--line);}
+  .btn-back:hover{border-color:var(--steel);color:var(--steel);}
+  .btn-submit{background:var(--ember);color:var(--white);margin-left:auto;}
+  .btn-submit:hover{background:#a4432a;}
+  .error-msg{
+    color:var(--danger);
+    font-size:12px;
+    margin-top:4px;
+    display:none;
+  }
+  .field.error input,.field.error select{border-color:var(--danger);}
+  .field.error .error-msg{display:block;}
+  .success-screen{
+    display:none;
+    padding:48px 32px;
+    text-align:center;
+  }
+  .success-screen.active{display:block;}
+  .success-screen h2{
+    font-family:'Oswald',sans-serif;
+    color:var(--steel);
+    text-transform:uppercase;
+    border:none;
+    padding:0;
+  }
+  .success-screen p{color:var(--slate);font-size:14px;}
+  .error-screen{
+    display:none;
+    padding:48px 32px;
+    text-align:center;
+  }
+  .error-screen.active{display:block;}
+  .error-screen h2{
+    font-family:'Oswald',sans-serif;
+    color:var(--danger);
+    text-transform:uppercase;
+    border:none;
+    padding:0;
+  }
+  .error-screen p{color:var(--slate);font-size:14px;margin-bottom:20px;}
+  .btn-retry{
+    background:var(--ember);
+    color:var(--white);
+    border:none;
+    padding:12px 28px;
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  .btn-retry:hover{background:#a4432a;}
+  .loading{
+    display:none;
+    text-align:center;
+    padding:48px;
+    color:var(--slate);
+    font-family:'Oswald',sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    font-size:13px;
+  }
+  .loading.active{display:block;}
+  @media (prefers-reduced-motion: reduce){
+    .step.active{animation:none;}
+  }
+</style>
+<style>
+  .progreso{padding:14px 32px 12px;border-bottom:1px solid var(--line);}
+  .progreso-txt{display:flex;justify-content:space-between;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--slate);margin-bottom:8px;}
+  .progreso-txt strong{color:var(--charcoal);font-weight:600;}
+  .barra{height:4px;background:var(--line);}
+  .barra span{display:block;height:100%;background:var(--ember);width:0;transition:width .3s ease;}
+  .intro{font-size:13px;color:var(--steel);line-height:1.5;background:var(--paper);border-left:3px solid var(--steel);padding:12px 14px;margin:0 0 22px;}
+  .opt{font-weight:400;color:var(--slate);}
+  .giros{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+  .giro{position:relative;border:1px solid var(--line);background:var(--white);padding:16px 14px;cursor:pointer;transition:all .15s ease;}
+  .giro input{position:absolute;opacity:0;inset:0;width:100%;height:100%;margin:0;cursor:pointer;}
+  .giro .ico{font-size:26px;line-height:1;display:block;margin-bottom:8px;}
+  input[type=url],input[type=month]{width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--paper);font-family:'Inter',sans-serif;font-size:14px;color:var(--charcoal);border-radius:2px;}
+  input[type=url]:focus,input[type=month]:focus{outline:none;border-color:var(--steel);background:var(--white);}
+  .field.error input[type=url],.field.error input[type=month]{border-color:var(--danger);}
+  .giro .nom{display:block;font-family:'Oswald',sans-serif;font-size:14px;text-transform:uppercase;letter-spacing:.03em;color:var(--charcoal);}
+  .giro .sub{display:block;font-size:12px;color:var(--slate);margin-top:3px;}
+  .giro:has(input:checked){border-color:var(--ember);box-shadow:inset 0 0 0 2px var(--ember);background:#FBEDE7;}
+  .giro.off{opacity:.45;cursor:not-allowed;background:var(--paper);}
+  .giro.off input{cursor:not-allowed;}
+  .giro .tag{position:absolute;top:8px;right:8px;font-size:10px;font-weight:600;color:var(--slate);border:1px solid var(--line);padding:2px 6px;background:var(--white);}
+  .check-group{display:flex;flex-wrap:wrap;gap:8px;}
+  .check-opt{position:relative;}
+  .check-opt input{position:absolute;opacity:0;width:100%;height:100%;cursor:pointer;margin:0;}
+  .check-opt label{display:block;padding:8px 14px;border:1px solid var(--line);font-size:13px;font-weight:500;color:var(--steel);cursor:pointer;margin:0;border-radius:2px;transition:all .15s ease;}
+  .check-opt label::before{content:"＋ ";color:var(--slate);}
+  .check-opt input:checked + label{background:var(--steel);border-color:var(--steel);color:var(--white);}
+  .check-opt input:checked + label::before{content:"✓ ";color:var(--white);}
+  .field.error .check-group .check-opt label,.field.error .radio-group .radio-opt label{border-color:var(--danger);}
+  .check-list{display:flex;flex-direction:column;gap:6px;}
+  .cl-item{position:relative;display:flex;gap:12px;align-items:flex-start;padding:10px 12px;border:1px solid var(--line);background:var(--white);cursor:pointer;margin:0;font-weight:400;transition:all .15s ease;}
+  .cl-item input{position:absolute;opacity:0;width:0;height:0;}
+  .cl-box{flex-shrink:0;width:20px;height:20px;margin-top:1px;border:2px solid var(--line);border-radius:3px;position:relative;background:var(--white);}
+  .cl-item input:checked ~ .cl-box{background:var(--steel);border-color:var(--steel);}
+  .cl-item input:checked ~ .cl-box::after{content:"";position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg);}
+  .cl-item:has(input:checked){border-color:var(--steel);background:#F2F4F6;}
+  .cl-item input:focus-visible ~ .cl-box{outline:2px solid var(--ember);outline-offset:2px;}
+  .cl-txt strong{display:block;font-size:13px;font-weight:600;color:var(--charcoal);}
+  .cl-txt small{display:block;font-size:12px;color:var(--slate);margin-top:2px;line-height:1.35;}
+  .field.error .cl-item{border-color:var(--danger);}
+  .contador-eq{font-size:12px;color:var(--slate);margin-top:8px;}
+  .bloque{border:1px solid var(--line);border-top:3px solid var(--steel);padding:16px 16px 2px;margin:0 0 16px;background:#FCFBF8;}
+  .bloque h3{font-family:'Oswald',sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--steel);margin:0 0 14px;display:flex;justify-content:space-between;align-items:center;}
+  .btn-quitar{font-family:'Inter',sans-serif;font-size:12px;text-transform:none;letter-spacing:0;font-weight:600;padding:4px 10px;background:transparent;border:1px solid var(--line);color:var(--slate);}
+  .btn-agregar{width:100%;background:var(--white);border:1px dashed var(--steel-light);color:var(--steel);font-family:'Inter',sans-serif;text-transform:none;letter-spacing:0;font-size:13px;padding:12px;margin-bottom:18px;}
+  .btn-agregar:hover{border-style:solid;}
+  .file-oculto{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;}
+  .subir{position:relative;}
+  .subir.procesando{opacity:.6;pointer-events:none;}
+  .aviso-archivo{font-size:12px;color:var(--slate);margin-top:6px;min-height:0;}
+  .aviso-archivo.mal{color:var(--danger);}
+  .archivos{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;}
+  .archivo{position:relative;width:84px;height:84px;border:1px solid var(--line);background:var(--paper);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--steel);text-align:center;padding:4px;overflow:hidden;word-break:break-all;}
+  .archivo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  .archivo button{position:absolute;top:2px;right:2px;width:22px;height:22px;padding:0;border-radius:50%;background:rgba(31,36,40,.8);color:#fff;font-size:13px;line-height:22px;font-family:'Inter',sans-serif;}
+  .subir{display:inline-flex;align-items:center;gap:8px;background:var(--steel);color:var(--white);font-weight:600;font-size:13px;padding:10px 16px;border-radius:4px;cursor:pointer;margin:0;}
+  .subir:hover{background:var(--charcoal);}
+  .field.error .subir{background:var(--danger);}
+  .estado-grupo{border:1px solid var(--line);margin-bottom:10px;}
+  .estado-head{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--paper);gap:10px;}
+  .estado-head strong{font-family:'Oswald',sans-serif;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--steel);}
+  .estado-head .contador{font-size:12px;color:var(--slate);margin-left:6px;font-family:'Inter',sans-serif;text-transform:none;letter-spacing:0;font-weight:500;}
+  .btn-todas{font-family:'Inter',sans-serif;font-size:12px;text-transform:none;letter-spacing:0;font-weight:600;padding:6px 10px;background:var(--white);border:1px solid var(--line);color:var(--steel);}
+  .estado-suc{padding:10px 12px;display:flex;flex-direction:column;gap:6px;}
+  .cl-compacto{padding:8px 12px;}
+  .cl-compacto .cl-txt strong{font-weight:500;}
+  .prueba-banner{background:#FFF4D6;border-bottom:1px solid #E8D28A;color:#6B5310;font-size:12px;padding:8px 32px;}
+  .resumen{display:none;padding:28px 32px 32px;}
+  .resumen.active{display:block;}
+  .resumen h2{font-family:'Oswald',sans-serif;font-size:17px;text-transform:uppercase;color:var(--steel);border-left:3px solid var(--ember);padding-left:10px;margin:0 0 6px;}
+  .resumen .nota{font-size:13px;color:var(--slate);margin:0 0 18px;}
+  .resumen h4{font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ember);margin:18px 0 6px;}
+  .resumen table{width:100%;border-collapse:collapse;font-size:13px;}
+  .resumen td{border-bottom:1px solid var(--line);padding:6px 4px;vertical-align:top;}
+  .resumen td:first-child{color:var(--slate);width:42%;}
+  .resumen .acciones{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap;}
+  @media (max-width:520px){
+    form{padding:22px 16px 26px;}
+    .plate{padding:24px 20px 18px;}
+    .progreso,.prueba-banner{padding-left:16px;padding-right:16px;}
+    .field-row-2{grid-template-columns:1fr !important;}
+    .resumen{padding:22px 16px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="plate">
+    <h1>PYLSA Acero</h1>
+    <p>Registro de proveedores y técnicos de servicio</p>
+  </div>
+  <div class="prueba-banner" id="bannerPrueba">Modo prueba: al terminar verás un resumen de tus respuestas y no se enviará nada.</div>
+
+  <div class="progreso" id="progreso">
+    <div class="progreso-txt"><strong id="pasoNombre">Giro</strong><span id="pasoNum">Paso 1 de 7</span></div>
+    <div class="barra"><span id="barra"></span></div>
+  </div>
+
+  <form id="provForm" novalidate>
+
+    <!-- PASO 1 — GIRO -->
+    <div class="step active" data-step="1" data-titulo="Giro">
+      <p class="intro">PYLSA Acero tiene más de 35 sucursales en el sureste. Buscamos técnicos y proveedores de confianza para mantenimiento de nuestras instalaciones. Regístrate y, si tu perfil encaja, un responsable de tu zona te contactará.</p>
+      <h2>¿A qué te dedicas?</h2>
+      <div class="field">
+        <div class="giros radio-group" data-name="giro" data-required>
+          <label class="giro"><input type="radio" name="giro" value="Grúas"><span class="ico">🏗️</span><span class="nom">Grúas</span><span class="sub">Viajeras, polipastos, pórticos</span></label>
+          <label class="giro off"><input type="radio" name="giro" value="Techos" disabled><span class="tag">Próximamente</span><span class="ico">🏠</span><span class="nom">Techos</span><span class="sub">Lámina, multipanel, goteras</span></label>
+          <label class="giro off"><input type="radio" name="giro" value="Electricidad" disabled><span class="tag">Próximamente</span><span class="ico">⚡</span><span class="nom">Electricidad</span><span class="sub">Tableros, subestaciones</span></label>
+          <label class="giro off"><input type="radio" name="giro" value="Herrería" disabled><span class="tag">Próximamente</span><span class="ico">🔩</span><span class="nom">Herrería</span><span class="sub">Soldadura, estructuras</span></label>
+        </div>
+        <div class="error-msg">Selecciona tu giro</div>
+      </div>
+      <div class="nav-buttons"><button type="button" class="btn-next" data-next>Comenzar</button></div>
+    </div>
+
+    <!-- PASO 2 — DATOS -->
+    <div class="step" data-step="2" data-titulo="Tus datos">
+      <h2>Tus datos</h2>
+
+      <div class="field">
+        <label>¿Eres persona física o moral?</label>
+        <div class="radio-group" data-name="tipo_persona" data-required>
+          <div class="radio-opt"><input type="radio" name="tipo_persona" value="Persona física" id="tp1"><label for="tp1">Persona física</label></div>
+          <div class="radio-opt"><input type="radio" name="tipo_persona" value="Persona moral" id="tp2"><label for="tp2">Persona moral (empresa)</label></div>
+        </div>
+        <div class="hint">Persona física: trabajas a tu nombre. Persona moral: empresa constituida (S.A., S. de R.L., etc.).</div>
+        <div class="error-msg">Selecciona una opción</div>
+      </div>
+
+      <div class="field">
+        <label id="lblNombre">Nombre completo</label>
+        <input type="text" name="nombre" required>
+        <div class="error-msg">Obligatorio</div>
+      </div>
+
+      <div class="field" id="campoContacto" style="display:none;">
+        <label>Nombre de la persona de contacto</label>
+        <input type="text" name="contacto" required>
+        <div class="error-msg">Obligatorio</div>
+      </div>
+
+      <div class="field">
+        <label>Nombre comercial <span class="opt">(opcional)</span></label>
+        <input type="text" name="nombre_comercial">
+        <div class="hint">Cómo te conocen tus clientes, si es distinto.</div>
+      </div>
+
+      <div class="field">
+        <label>WhatsApp</label>
+        <input type="tel" name="whatsapp" class="solo-digitos" inputmode="numeric" placeholder="10 dígitos" required data-pattern="^\d{10}$">
+        <div class="error-msg">Escribe 10 dígitos</div>
+      </div>
+
+      <div class="field">
+        <label>Correo electrónico <span class="opt">(opcional)</span></label>
+        <input type="email" name="correo" data-pattern="^([^\s@]+@[^\s@]+\.[^\s@]+)?$">
+        <div class="error-msg">Correo no válido</div>
+      </div>
+
+      <div class="field-row-3 field-row-2" style="grid-template-columns:2fr 1fr;">
+        <div class="field">
+          <label>Ciudad donde te ubicas</label>
+          <input type="text" name="ciudad" required>
+          <div class="error-msg">Obligatorio</div>
+        </div>
+        <div class="field">
+          <label>Estado</label>
+          <select name="estado" id="estadoBase" required><option value="">Selecciona…</option></select>
+          <div class="error-msg">Obligatorio</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>¿Cuántos técnicos trabajan contigo?</label>
+        <div class="radio-group" data-name="tecnicos" data-required>
+          <div class="radio-opt"><input type="radio" name="tecnicos" value="Solo yo" id="te1"><label for="te1">Solo yo</label></div>
+          <div class="radio-opt"><input type="radio" name="tecnicos" value="2 a 3" id="te2"><label for="te2">2 a 3</label></div>
+          <div class="radio-opt"><input type="radio" name="tecnicos" value="4 a 6" id="te3"><label for="te3">4 a 6</label></div>
+          <div class="radio-opt"><input type="radio" name="tecnicos" value="Más de 6" id="te4"><label for="te4">Más de 6</label></div>
+        </div>
+        <div class="error-msg">Selecciona una opción</div>
+      </div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn-back" data-back>Atrás</button>
+        <button type="button" class="btn-next" data-next>Siguiente</button>
+      </div>
+    </div>
+
+    <!-- PASO 3 — EXPERIENCIA -->
+    <div class="step" data-step="3" data-titulo="Experiencia">
+      <h2>Experiencia en grúas</h2>
+
+      <div class="field">
+        <label>¿Cuántos años llevas reparando grúas?</label>
+        <div class="radio-group" data-name="anios" data-required>
+          <div class="radio-opt"><input type="radio" name="anios" value="Menos de 1 año" id="an1"><label for="an1">Menos de 1 año</label></div>
+          <div class="radio-opt"><input type="radio" name="anios" value="1 a 3 años" id="an2"><label for="an2">1 a 3</label></div>
+          <div class="radio-opt"><input type="radio" name="anios" value="3 a 5 años" id="an3"><label for="an3">3 a 5</label></div>
+          <div class="radio-opt"><input type="radio" name="anios" value="5 a 10 años" id="an4"><label for="an4">5 a 10</label></div>
+          <div class="radio-opt"><input type="radio" name="anios" value="Más de 10 años" id="an5"><label for="an5">Más de 10</label></div>
+        </div>
+        <div class="error-msg">Selecciona una opción</div>
+      </div>
+
+      <div class="field">
+        <label>¿Qué equipos has reparado?</label>
+        <div class="check-list check-group" data-name="equipos" data-min="1">
+          <label class="cl-item"><input type="checkbox" name="equipos" value="Grúa viajera / puente" id="eq1"><span class="cl-box"></span><span class="cl-txt"><strong>Grúa viajera / puente</strong><small>Viga que corre sobre rieles a lo largo de la nave</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="equipos" value="Polipasto eléctrico de cadena" id="eq2"><span class="cl-box"></span><span class="cl-txt"><strong>Polipasto eléctrico de cadena</strong><small>Levanta con cadena; común hasta 5 t</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="equipos" value="Polipasto de cable" id="eq3"><span class="cl-box"></span><span class="cl-txt"><strong>Polipasto de cable</strong><small>Levanta con cable de acero; para cargas mayores</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="equipos" value="Grúa pórtico" id="eq4"><span class="cl-box"></span><span class="cl-txt"><strong>Grúa pórtico</strong><small>Con patas que corren sobre rieles en el piso</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="equipos" value="Grúa bandera" id="eq5"><span class="cl-box"></span><span class="cl-txt"><strong>Grúa bandera</strong><small>Brazo giratorio fijo a una columna o muro</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="equipos" value="Monorriel / trole" id="eq6"><span class="cl-box"></span><span class="cl-txt"><strong>Monorriel / trole</strong><small>Polipasto que corre sobre una sola viga</small></span></label>
+        </div>
+        <div class="error-msg">Selecciona al menos uno</div>
+      </div>
+
+      <div class="field">
+        <label>Capacidad máxima de grúa que has reparado</label>
+        <div class="radio-group" data-name="capacidad" data-required>
+          <div class="radio-opt"><input type="radio" name="capacidad" value="Hasta 3 t" id="ca1"><label for="ca1">Hasta 3 t</label></div>
+          <div class="radio-opt"><input type="radio" name="capacidad" value="3 a 5 t" id="ca2"><label for="ca2">3 a 5 t</label></div>
+          <div class="radio-opt"><input type="radio" name="capacidad" value="5 a 10 t" id="ca3"><label for="ca3">5 a 10 t</label></div>
+          <div class="radio-opt"><input type="radio" name="capacidad" value="10 a 20 t" id="ca4"><label for="ca4">10 a 20 t</label></div>
+          <div class="radio-opt"><input type="radio" name="capacidad" value="Más de 20 t" id="ca5"><label for="ca5">Más de 20 t</label></div>
+        </div>
+        <div class="error-msg">Selecciona una opción</div>
+      </div>
+
+
+      <div class="field">
+        <label>¿Qué trabajos sabes hacer?</label>
+        <div class="check-list check-group" data-name="servicios" data-min="1">
+          <label class="cl-item"><input type="checkbox" name="servicios" value="Mantenimiento preventivo" id="sv1"><span class="cl-box"></span><span class="cl-txt"><strong>Mantenimiento preventivo</strong><small>Revisión, ajuste y lubricación programada</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="servicios" value="Diagnóstico de fallas" id="sv2"><span class="cl-box"></span><span class="cl-txt"><strong>Diagnóstico de fallas</strong><small>Encontrar por qué la grúa no funciona bien</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="servicios" value="Cambio de cable" id="sv3"><span class="cl-box"></span><span class="cl-txt"><strong>Cambio de cable</strong><small>Sustituir el cable de acero del polipasto</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="servicios" value="Cambio de gancho o bloque" id="sv4"><span class="cl-box"></span><span class="cl-txt"><strong>Cambio de gancho o bloque</strong><small>Gancho, pasador, seguro y bloque de poleas</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="servicios" value="Frenos" id="sv5"><span class="cl-box"></span><span class="cl-txt"><strong>Frenos</strong><small>Ajuste y cambio de balatas o del freno del motor</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="servicios" value="Motores" id="sv6"><span class="cl-box"></span><span class="cl-txt"><strong>Motores</strong><small>Reparación o cambio de motores de elevación y traslación</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="servicios" value="Tablero y contactores" id="sv7"><span class="cl-box"></span><span class="cl-txt"><strong>Tablero y contactores</strong><small>Contactores, relevadores, fusibles y cableado</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="servicios" value="Botonera y control remoto" id="sv8"><span class="cl-box"></span><span class="cl-txt"><strong>Botonera y control remoto</strong><small>Reparación o cambio de la botonera o del radiocontrol</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="servicios" value="Variadores" id="sv9"><span class="cl-box"></span><span class="cl-txt"><strong>Variadores</strong><small>Programación y cambio de variadores de frecuencia</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="servicios" value="Rieles, trole y ruedas" id="sv10"><span class="cl-box"></span><span class="cl-txt"><strong>Rieles, trole y ruedas</strong><small>Alineación, desgaste y cambio de ruedas</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="servicios" value="Prueba de carga" id="sv11"><span class="cl-box"></span><span class="cl-txt"><strong>Prueba de carga</strong><small>Comprobar que la grúa levanta su capacidad con seguridad</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="servicios" value="Instalación de grúa nueva" id="sv12"><span class="cl-box"></span><span class="cl-txt"><strong>Instalación de grúa nueva</strong><small>Montaje completo y puesta en marcha</small></span></label>
+        </div>
+        <div class="error-msg">Selecciona al menos uno</div>
+      </div>
+
+      <div class="field">
+        <label>Al terminar un servicio, ¿entregas reporte por escrito?</label>
+        <div class="radio-group" data-name="reporte" data-required>
+          <div class="radio-opt"><input type="radio" name="reporte" value="Sí, con fotos" id="rp1"><label for="rp1">Sí, con fotos</label></div>
+          <div class="radio-opt"><input type="radio" name="reporte" value="Sí, sin fotos" id="rp2"><label for="rp2">Sí, sin fotos</label></div>
+          <div class="radio-opt"><input type="radio" name="reporte" value="No" id="rp3"><label for="rp3">No</label></div>
+        </div>
+        <div class="error-msg">Selecciona una opción</div>
+      </div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn-back" data-back>Atrás</button>
+        <button type="button" class="btn-next" data-next>Siguiente</button>
+      </div>
+    </div>
+
+    <!-- PASO 4 — TALLER -->
+    <div class="step" data-step="4" data-titulo="Taller y equipo">
+      <h2>Taller, equipo y refacciones</h2>
+
+      <div class="field">
+        <label>¿Tienes taller?</label>
+        <div class="radio-group" data-name="taller" data-required>
+          <div class="radio-opt"><input type="radio" name="taller" value="Sí" id="ta1"><label for="ta1">Sí</label></div>
+          <div class="radio-opt"><input type="radio" name="taller" value="No" id="ta2"><label for="ta2">No</label></div>
+        </div>
+        <div class="error-msg">Selecciona una opción</div>
+      </div>
+
+      <div id="bloqueTaller" style="display:none;">
+        <div class="field">
+          <label>Dirección del taller</label>
+          <input type="text" name="taller_direccion" required>
+          <div class="error-msg">Obligatorio</div>
+        </div>
+        <div class="field">
+          <label>Enlace de Google Maps <span class="opt">(opcional)</span></label>
+          <input type="url" name="taller_maps" placeholder="https://maps.app.goo.gl/…" data-pattern="^(https?://\S+)?$">
+          <div class="hint">En Google Maps: busca tu taller → Compartir → Copiar enlace.</div>
+          <div class="error-msg">Pega el enlace completo (empieza con https://)</div>
+        </div>
+        <div class="field archivo-field" data-file="fotos_taller" data-min-files="2" data-max-files="4" data-tipo="img">
+          <label>Fotos del taller <span class="opt">(mínimo 2)</span></label>
+          <label class="subir">📷 Agregar fotos<input type="file" accept="image/*" multiple class="file-oculto"></label>
+          <div class="archivos"></div>
+      <div class="aviso-archivo" aria-live="polite"></div>
+          <div class="error-msg">Sube al menos 2 fotos del taller</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>¿Cómo consigues las refacciones?</label>
+        <div class="radio-group" data-name="refacciones" data-required>
+          <div class="radio-opt"><input type="radio" name="refacciones" value="Tengo stock de lo más común" id="rf1"><label for="rf1">Tengo stock de lo más común</label></div>
+          <div class="radio-opt"><input type="radio" name="refacciones" value="Las pido según la falla" id="rf2"><label for="rf2">Las pido según la falla</label></div>
+          <div class="radio-opt"><input type="radio" name="refacciones" value="El cliente las compra" id="rf3"><label for="rf3">El cliente las compra</label></div>
+        </div>
+        <div class="error-msg">Selecciona una opción</div>
+      </div>
+
+      <div class="field">
+        <label>¿Cuánto tardas en conseguir refacciones comunes (contactores, botonera, cable)?</label>
+        <div class="radio-group" data-name="tiempo_refacciones" data-required>
+          <div class="radio-opt"><input type="radio" name="tiempo_refacciones" value="Mismo día" id="tf1"><label for="tf1">Mismo día</label></div>
+          <div class="radio-opt"><input type="radio" name="tiempo_refacciones" value="1 a 3 días" id="tf2"><label for="tf2">1 a 3 días</label></div>
+          <div class="radio-opt"><input type="radio" name="tiempo_refacciones" value="Más de 3 días" id="tf3"><label for="tf3">Más de 3 días</label></div>
+        </div>
+        <div class="error-msg">Selecciona una opción</div>
+      </div>
+
+      <div class="field">
+        <label>Equipo básico con el que cuentas</label>
+        <div class="hint" style="margin:0 0 10px;">Marca solo lo que tienes. El responsable de tu zona puede pedirte fotos de tu equipo.</div>
+        <div class="check-list check-group" data-name="equipo_basico" data-min="1">
+          <label class="cl-item"><input type="checkbox" name="equipo_basico" value="Arnés de cuerpo completo y línea de vida" id="eb1"><span class="cl-box"></span><span class="cl-txt"><strong>Arnés de cuerpo completo y línea de vida</strong><small>Con absorbedor de impacto, para trabajar sobre la grúa</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="equipo_basico" value="Candados y etiquetas de bloqueo" id="eb2"><span class="cl-box"></span><span class="cl-txt"><strong>Candados y etiquetas de bloqueo</strong><small>Para dejar la grúa sin energía mientras trabajas</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="equipo_basico" value="Multímetro digital" id="eb3"><span class="cl-box"></span><span class="cl-txt"><strong>Multímetro digital</strong><small>Para medir voltaje, continuidad y resistencia</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="equipo_basico" value="Amperímetro de gancho" id="eb4"><span class="cl-box"></span><span class="cl-txt"><strong>Amperímetro de gancho</strong><small>Pinza amperimétrica, para medir el consumo de los motores</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="equipo_basico" value="Juego completo de herramienta manual" id="eb5"><span class="cl-box"></span><span class="cl-txt"><strong>Juego completo de herramienta manual</strong><small>Llaves, dados y matraca métricos y estándar, llaves Allen, pinzas</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="equipo_basico" value="Polipasto manual de cadena, de palanca o tirfor" id="eb6"><span class="cl-box"></span><span class="cl-txt"><strong>Polipasto manual de cadena, de palanca o tirfor</strong><small>Para sostener el gancho o la carga durante la reparación</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="equipo_basico" value="Eslingas y grilletes certificados" id="eb7"><span class="cl-box"></span><span class="cl-txt"><strong>Eslingas y grilletes certificados</strong><small>Para maniobras seguras</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="equipo_basico" value="Extractor de baleros y poleas" id="eb8"><span class="cl-box"></span><span class="cl-txt"><strong>Extractor de baleros y poleas</strong><small>Para cambiar rodamientos, ruedas y poleas</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="equipo_basico" value="Vernier o calibrador" id="eb9"><span class="cl-box"></span><span class="cl-txt"><strong>Vernier o calibrador</strong><small>Para medir el desgaste del cable de acero, el gancho y las ruedas</small></span></label>
+          <label class="cl-item"><input type="checkbox" name="equipo_basico" value="Camioneta propia" id="eb10"><span class="cl-box"></span><span class="cl-txt"><strong>Camioneta propia</strong><small>Para trasladarte con tu equipo a la sucursal</small></span></label>
+        </div>
+        <div class="contador-eq" data-cuenta="equipo_basico" data-total="10"></div>
+        <div class="error-msg">Selecciona al menos uno</div>
+      </div>
+
+
+      <div class="nav-buttons">
+        <button type="button" class="btn-back" data-back>Atrás</button>
+        <button type="button" class="btn-next" data-next>Siguiente</button>
+      </div>
+    </div>
+
+    <!-- PASO 5 — TRABAJOS -->
+    <div class="step" data-step="5" data-titulo="Trabajos realizados">
+      <h2>Trabajos realizados</h2>
+      <p class="intro">Cuéntanos 2 trabajos de grúas que hayas hecho (puedes agregar un tercero). Llamaremos a la persona que te contrató para confirmarlo. Es lo que más pesa en tu evaluación.</p>
+      <div id="trabajos"></div>
+      <button type="button" class="btn-agregar" id="addTrabajo">＋ Agregar un tercer trabajo</button>
+      <div class="field" id="campoAutoriza">
+        <label class="privacidad-check">
+          <input type="checkbox" id="chkAutoriza" name="autoriza_referencias" value="Sí">
+          <span class="box"></span>
+          <span class="texto">Autorizo que PYLSA Acero contacte a las personas de mis trabajos para pedir referencias.</span>
+        </label>
+        <div class="error-msg">Necesitamos tu autorización para continuar</div>
+      </div>
+      <div class="nav-buttons">
+        <button type="button" class="btn-back" data-back>Atrás</button>
+        <button type="button" class="btn-next" data-next>Siguiente</button>
+      </div>
+    </div>
+
+    <!-- PASO 6 — FORMALIDAD -->
+    <div class="step" data-step="6" data-titulo="Formalidad">
+      <h2>Facturación y documentos</h2>
+
+      <div class="field">
+        <label>¿Emites factura?</label>
+        <div class="radio-group" data-name="factura" data-required>
+          <div class="radio-opt"><input type="radio" name="factura" value="Sí" id="fa1"><label for="fa1">Sí</label></div>
+          <div class="radio-opt"><input type="radio" name="factura" value="No" id="fa2"><label for="fa2">No</label></div>
+        </div>
+        <div class="error-msg">Selecciona una opción</div>
+      </div>
+
+      <div id="bloqueFactura" style="display:none;">
+        <div class="field">
+          <label>RFC</label>
+          <input type="text" name="rfc" maxlength="13" required data-pattern="^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$">
+          <div class="error-msg">RFC no válido (12 o 13 caracteres)</div>
+        </div>
+        <div class="field archivo-field" data-file="csf" data-min-files="1" data-max-files="1" data-tipo="doc">
+          <label>Constancia de Situación Fiscal</label>
+          <label class="subir">📄 Subir PDF o foto<input type="file" accept="application/pdf,image/*" class="file-oculto"></label>
+          <div class="hint">La descargas en sat.gob.mx o desde la app SAT Móvil.</div>
+          <div class="archivos"></div>
+      <div class="aviso-archivo" aria-live="polite"></div>
+          <div class="error-msg">Sube tu Constancia de Situación Fiscal</div>
+        </div>
+      </div>
+
+      <div class="field archivo-field" data-file="dc3" data-min-files="0" data-max-files="3" data-tipo="doc">
+        <label>Constancias DC-3 <span class="opt">(opcional, suma puntos)</span></label>
+        <label class="subir">📄 Subir PDF o foto<input type="file" accept="application/pdf,image/*" multiple class="file-oculto"></label>
+        <div class="hint">Trabajos en altura, maniobras de izaje o riesgo eléctrico. Hasta 3.</div>
+        <div class="archivos"></div>
+      <div class="aviso-archivo" aria-live="polite"></div>
+        <div class="error-msg">Máximo 3 archivos</div>
+      </div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn-back" data-back>Atrás</button>
+        <button type="button" class="btn-next" data-next>Siguiente</button>
+      </div>
+    </div>
+
+    <!-- PASO 7 — CONDICIONES -->
+    <div class="step" data-step="7" data-titulo="Condiciones">
+      <h2>Cobertura y condiciones</h2>
+
+      <div class="field" id="campoSucursales">
+        <label>¿A qué sucursales de PYLSA puedes dar servicio?</label>
+        <div class="hint" style="margin:0 0 10px;">Marca solo las que realmente puedes atender.</div>
+        <div id="coberturaBox"></div>
+        <div class="error-msg">Selecciona al menos una sucursal</div>
+      </div>
+
+      <div class="field">
+        <label>Si una grúa se para fuera de horario, ¿puedes venir?</label>
+        <div class="radio-group" data-name="urgencias" data-required>
+          <div class="radio-opt"><input type="radio" name="urgencias" value="Sí, 24/7" id="ur1"><label for="ur1">Sí, 24/7</label></div>
+          <div class="radio-opt"><input type="radio" name="urgencias" value="Fines de semana y horario extendido" id="ur2"><label for="ur2">Fines de semana y horario extendido</label></div>
+          <div class="radio-opt"><input type="radio" name="urgencias" value="Solo horario hábil" id="ur3"><label for="ur3">Solo horario hábil</label></div>
+        </div>
+        <div class="error-msg">Selecciona una opción</div>
+      </div>
+
+      <div class="field">
+        <label>¿Cuánto tardas en llegar a la sucursal más cercana?</label>
+        <div class="radio-group" data-name="tiempo_llegada" data-required>
+          <div class="radio-opt"><input type="radio" name="tiempo_llegada" value="Mismo día" id="tl1"><label for="tl1">Mismo día</label></div>
+          <div class="radio-opt"><input type="radio" name="tiempo_llegada" value="24 horas" id="tl2"><label for="tl2">24 horas</label></div>
+          <div class="radio-opt"><input type="radio" name="tiempo_llegada" value="48 horas" id="tl3"><label for="tl3">48 horas</label></div>
+          <div class="radio-opt"><input type="radio" name="tiempo_llegada" value="Más de 48 horas" id="tl4"><label for="tl4">Más de 48 horas</label></div>
+        </div>
+        <div class="error-msg">Selecciona una opción</div>
+      </div>
+
+      <div class="field">
+        <label>¿Cobras visita de diagnóstico?</label>
+        <div class="radio-group" data-name="cobra_visita" data-required>
+          <div class="radio-opt"><input type="radio" name="cobra_visita" value="No" id="cv1"><label for="cv1">No</label></div>
+          <div class="radio-opt"><input type="radio" name="cobra_visita" value="Sí" id="cv2"><label for="cv2">Sí</label></div>
+          <div class="radio-opt"><input type="radio" name="cobra_visita" value="Solo si no se contrata el trabajo" id="cv3"><label for="cv3">Solo si no se contrata el trabajo</label></div>
+        </div>
+        <div class="error-msg">Selecciona una opción</div>
+      </div>
+
+      <div class="field" id="campoCostoVisita" style="display:none;">
+        <label>Costo de la visita (MXN)</label>
+        <input type="number" name="costo_visita" min="0" max="50000" required>
+        <div class="error-msg">Escribe un monto válido</div>
+      </div>
+
+      <div class="field">
+        <label>Precio aproximado de un mantenimiento preventivo a una grúa viajera de 5 t (MXN)</label>
+        <input type="number" name="precio_preventivo" min="500" max="500000" required>
+        <div class="hint">Solo como referencia, sin incluir refacciones.</div>
+        <div class="error-msg">Escribe un monto válido</div>
+      </div>
+
+      <div class="field">
+        <label>¿Das garantía por tu trabajo?</label>
+        <div class="radio-group" data-name="garantia" data-required>
+          <div class="radio-opt"><input type="radio" name="garantia" value="No" id="ga1"><label for="ga1">No</label></div>
+          <div class="radio-opt"><input type="radio" name="garantia" value="30 días" id="ga2"><label for="ga2">30 días</label></div>
+          <div class="radio-opt"><input type="radio" name="garantia" value="3 meses" id="ga3"><label for="ga3">3 meses</label></div>
+          <div class="radio-opt"><input type="radio" name="garantia" value="6 meses o más" id="ga4"><label for="ga4">6 meses o más</label></div>
+        </div>
+        <div class="error-msg">Selecciona una opción</div>
+      </div>
+
+      <div class="field">
+        <label>Formas de pago que aceptas</label>
+        <div class="check-list check-group" data-name="formas_pago" data-min="1">
+          <label class="cl-item"><input type="checkbox" name="formas_pago" value="Transferencia" id="fp1"><span class="cl-box"></span><span class="cl-txt"><strong>Transferencia</strong></span></label>
+          <label class="cl-item"><input type="checkbox" name="formas_pago" value="Efectivo" id="fp2"><span class="cl-box"></span><span class="cl-txt"><strong>Efectivo</strong></span></label>
+          <label class="cl-item"><input type="checkbox" name="formas_pago" value="Crédito 15 días" id="fp3"><span class="cl-box"></span><span class="cl-txt"><strong>Crédito 15 días</strong></span></label>
+          <label class="cl-item"><input type="checkbox" name="formas_pago" value="Crédito 30 días" id="fp4"><span class="cl-box"></span><span class="cl-txt"><strong>Crédito 30 días</strong></span></label>
+        </div>
+        <div class="error-msg">Selecciona al menos una</div>
+      </div>
+
+      <div class="field" id="campoPrivacidad">
+        <label class="privacidad-check">
+          <input type="checkbox" id="chkPrivacidad">
+          <span class="box"></span>
+          <span class="texto">Acepto que PYLSA Acero guarde estos datos para contactarme con fines de cotización y contratación de servicios.</span>
+        </label>
+        <div class="error-msg">Debes aceptar para continuar</div>
+      </div>
+
+      <div class="nav-buttons">
+        <button type="button" class="btn-back" data-back>Atrás</button>
+        <button type="submit" class="btn-submit">Enviar registro</button>
+      </div>
+    </div>
+  </form>
+
+  <div class="loading" id="loadingScreen">Enviando registro…</div>
+
+  <div class="success-screen" id="successScreen">
+    <h2>¡Registro recibido!</h2>
+    <p>Gracias por registrarte. Revisaremos tu información y, si tu perfil encaja, un responsable de PYLSA Acero de tu zona te contactará por WhatsApp.</p>
+  </div>
+
+  <div class="error-screen" id="errorScreen">
+    <h2>No se pudo enviar</h2>
+    <p>Revisa tu conexión a internet e inténtalo de nuevo. Tus respuestas siguen guardadas.</p>
+    <button type="button" class="btn-retry" id="btnRetry">Reintentar</button>
+  </div>
+
+  <div class="resumen" id="resumen">
+    <h2>Resumen del registro</h2>
+    <p class="nota">Modo prueba: esto es lo que recibiría n8n. No se envió nada.</p>
+    <div id="resumenCuerpo"></div>
+    <div class="acciones">
+      <button type="button" class="btn-back" id="btnEditar">Volver a editar</button>
+    </div>
+  </div>
+</div>
+
+<template id="tplTrabajo">
+  <div class="bloque" data-bloque="trabajo">
+    <h3><span>Trabajo <span class="num"></span></span><button type="button" class="btn-quitar" hidden>Quitar</button></h3>
+    <div class="field">
+      <label>Empresa</label>
+      <input type="text" data-k="empresa" required>
+      <div class="error-msg">Obligatorio</div>
+    </div>
+    <div class="field-row-3 field-row-2" style="grid-template-columns:1fr 1fr;">
+      <div class="field">
+        <label>Nombre de la persona que te contrató</label>
+        <input type="text" data-k="contacto" required>
+        <div class="error-msg">Obligatorio</div>
+      </div>
+      <div class="field">
+        <label>Teléfono</label>
+        <input type="tel" data-k="telefono" class="solo-digitos" inputmode="numeric" placeholder="10 dígitos" required data-pattern="^\d{10}$" data-ref-tel>
+        <div class="error-msg">Escribe 10 dígitos. Debe ser el teléfono de tu cliente: no puede ser el tuyo ni repetirse en otro trabajo</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>¿Qué trabajo hiciste?</label>
+      <textarea data-k="descripcion" required data-minlen="20" placeholder="EJ. CAMBIO DE CABLE Y FRENO DEL POLIPASTO PRINCIPAL"></textarea>
+      <div class="error-msg">Describe el trabajo con más detalle (mínimo 20 letras)</div>
+    </div>
+    <div class="field-row-3 field-row-2" style="grid-template-columns:3fr 2fr;">
+      <div class="field">
+        <label>Equipo y capacidad</label>
+        <input type="text" data-k="equipo" required placeholder="EJ. GRÚA VIAJERA 10 T">
+        <div class="error-msg">Obligatorio</div>
+      </div>
+      <div class="field">
+        <label>¿Cuándo fue?</label>
+        <input type="month" data-k="fecha" required>
+        <div class="error-msg">Mes y año</div>
+      </div>
+    </div>
+    <div class="field-row-3 field-row-2" style="grid-template-columns:1fr 1fr;">
+      <div class="field">
+        <label>¿Cuánto cobraste aproximadamente? (MXN)</label>
+        <input type="number" data-k="monto" min="1" max="5000000" required inputmode="numeric">
+        <div class="error-msg">Escribe un monto válido</div>
+      </div>
+      <div class="field">
+        <label>¿Ese monto incluía refacciones?</label>
+        <div class="radio-group" data-required>
+          <div class="radio-opt"><input type="radio" data-k="incluye_refacciones" value="Sí"><label>Sí</label></div>
+          <div class="radio-opt"><input type="radio" data-k="incluye_refacciones" value="No"><label>No</label></div>
+        </div>
+        <div class="error-msg">Selecciona una opción</div>
+      </div>
+    </div>
+    <div class="field archivo-field" data-min-files="1" data-max-files="3" data-tipo="img">
+      <label>Fotos del trabajo <span class="opt">(1 a 3)</span></label>
+      <label class="subir">📷 Agregar fotos<input type="file" accept="image/*" multiple class="file-oculto"></label>
+      <div class="archivos"></div>
+      <div class="aviso-archivo" aria-live="polite"></div>
+      <div class="error-msg">Sube al menos 1 foto</div>
+    </div>
+  </div>
+</template>
+
+
+<script>
+// ===== CONFIGURACIÓN =====
+// Vacío = MODO PRUEBA (muestra un resumen y no envía nada).
+// Para producción pon aquí el webhook de n8n.
+const WEBHOOK_URL = "https://danielrodriguez.app.n8n.cloud/webhook/proveedores-registro";
+// =========================
+
+const ESTADOS = ["Veracruz","Tabasco","Chiapas","Oaxaca","Yucatán","Quintana Roo","Campeche","Puebla","Otro"];
+const SUCURSALES = {
+  "Veracruz": [
+    "Veracruz — Col. Pedro I Mata (Matriz)","Veracruz — Col. Ejido 1ro de Mayo (Sur)","Veracruz — Villa Rica (Golfo)",
+    "Veracruz — Col. Artículo 123 (Acerofertas)","Veracruz — Col. Centro","Tejería — Carr. Veracruz-Xalapa",
+    "José Cardel — Col. Centro","Xalapa — Col. Rafael Lucio","Acayucan — Barrio Villalta","Minatitlán — Col. Nueva Mina",
+    "Coatzacoalcos — Col. Benito Juárez","Coatzacoalcos — Estero del Pantano","Cosamaloapan — Col. Centro",
+    "Córdoba — Zona Industrial","Córdoba — Col. Centro","Orizaba — Col. Centro","Orizaba — Col. Abelardo L. Rodríguez",
+    "San Andrés Tuxtla — El Rodeo","San Andrés Tuxtla — Col. 3 de Mayo","Tierra Blanca — Col. Hoja del Maíz","Poza Rica — Jardines de Poza Rica"
+  ],
+  "Tabasco": ["Comalcalco — Col. Santa Amalia Zona Industrial","Cárdenas — Carretera km 1.6","Villahermosa — Atasta","Villahermosa — Ciudad Industrial","Huimanguillo — Col. El Desecho"],
+  "Chiapas": ["Tuxtla Gutiérrez — San José Terán","Tuxtla Gutiérrez — Col. Centro Norte","Tuxtla Gutiérrez — Loma Larga","Palenque — Col. Magisterial"],
+  "Oaxaca": ["Tuxtepec — Santa Fe","Tuxtepec — Col. del Carmen"],
+  "Yucatán": ["Mérida — Ciudad Industrial","Mérida — Sambulá","Mérida — El Porvenir","Mérida — Sta. María Chuburná"],
+  "Quintana Roo": ["Cancún — Supermanzana 102","Playa del Carmen — Gonzalo Guerrero"]
+};
+
+const $ = (s, el=document) => el.querySelector(s);
+const $$ = (s, el=document) => Array.from(el.querySelectorAll(s));
+const slug = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').toLowerCase();
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const MODO_PRUEBA = !WEBHOOK_URL;
+if(!MODO_PRUEBA) $('#bannerPrueba').remove();
+
+// ---------- Listas ----------
+ESTADOS.forEach(e => $('#estadoBase').add(new Option(e, e)));
+
+const coberturaBox = $('#coberturaBox');
+Object.entries(SUCURSALES).forEach(([estado, sucs]) => {
+  const id = slug(estado);
+  const opts = sucs.map((s,i) =>
+    `<label class="cl-item cl-compacto"><input type="checkbox" name="sucursales" value="${s}" data-estado="${estado}" id="s-${id}-${i}"><span class="cl-box"></span><span class="cl-txt"><strong>${s}</strong></span></label>`).join('');
+  coberturaBox.insertAdjacentHTML('beforeend',
+    `<div class="estado-grupo"><div class="estado-head"><strong>${estado}<span class="contador" data-cont="${estado}"></span></strong>
+     <button type="button" class="btn-todas" data-todas="${estado}">Todas</button></div><div class="estado-suc">${opts}</div></div>`);
+});
+function actualizarContadores(){
+  Object.keys(SUCURSALES).forEach(estado => {
+    const boxes = $$(`input[name="sucursales"][data-estado="${estado}"]`);
+    const n = boxes.filter(b => b.checked).length;
+    $(`[data-cont="${estado}"]`).textContent = n ? `· ${n} de ${boxes.length}` : '';
+    $(`[data-todas="${estado}"]`).textContent = n === boxes.length ? 'Quitar todas' : 'Todas';
+  });
+}
+coberturaBox.addEventListener('change', actualizarContadores);
+coberturaBox.addEventListener('click', e => {
+  const estado = e.target.dataset && e.target.dataset.todas;
+  if(!estado) return;
+  const boxes = $$(`input[name="sucursales"][data-estado="${estado}"]`);
+  const marcar = !boxes.every(b => b.checked);
+  boxes.forEach(b => b.checked = marcar);
+  actualizarContadores();
+  $('#campoSucursales').classList.remove('error');
+});
+
+// ---------- Archivos (fotos comprimidas, PDF hasta 4 MB) ----------
+const MAX_PDF = 4 * 1024 * 1024;
+const archivos = new WeakMap(); // campo .archivo-field -> [{nombre,tipo,base64,preview}]
+
+function leerComoDataURL(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error('no se pudo leer el archivo'));
+    r.readAsDataURL(file);
+  });
+}
+// Reduce la foto a máx. 1280 px. Usa data: URL (no blob:) para que funcione aunque el visor bloquee blob:.
+// Si el navegador no puede decodificarla (p. ej. HEIC), se envía el archivo original si pesa ≤ 4 MB.
+async function comprimir(file){
+  const dataUrl = await leerComoDataURL(file);
+  try{
+    const img = await new Promise((resolve, reject) => {
+      const im = new Image();
+      im.onload = () => resolve(im);
+      im.onerror = () => reject(new Error('decodificación'));
+      im.src = dataUrl;
+    });
+    const k = Math.min(1, 1280 / Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    const d = c.toDataURL('image/jpeg', 0.72);
+    return { nombre: file.name.replace(/\.[^.]+$/, '') + '.jpg', tipo: 'image/jpeg', base64: d.split(',')[1], preview: d };
+  }catch(err){
+    if(file.size > MAX_PDF) throw new Error('la foto pesa más de 4 MB y no se pudo reducir');
+    return { nombre: file.name, tipo: file.type || 'image/*', base64: dataUrl.split(',')[1], preview: null };
+  }
+}
+async function leerPDF(file){
+  if(file.size > MAX_PDF) throw new Error('el PDF pesa más de 4 MB');
+  const dataUrl = await leerComoDataURL(file);
+  return { nombre: file.name, tipo: 'application/pdf', base64: dataUrl.split(',')[1], preview: null };
+}
+function pintarArchivos(campo){
+  const lista = archivos.get(campo) || [];
+  const cont = $('.archivos', campo);
+  cont.innerHTML = '';
+  lista.forEach((f, i) => {
+    const div = document.createElement('div');
+    div.className = 'archivo';
+    div.innerHTML = f.preview ? `<img src="${f.preview}" alt="">` : `${f.tipo === 'application/pdf' ? '📄' : '📷'} ${esc(f.nombre)}`;
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = '×'; b.title = 'Quitar';
+    b.onclick = () => { lista.splice(i, 1); pintarArchivos(campo); };
+    div.appendChild(b);
+    cont.appendChild(div);
+  });
+  const max = Number(campo.dataset.maxFiles || 3);
+  $('.subir', campo).style.display = lista.length >= max ? 'none' : '';
+}
+function activarArchivos(raiz){
+  $$('.archivo-field', raiz).forEach(campo => {
+    if(archivos.has(campo)) return;
+    archivos.set(campo, []);
+    const input = $('input[type=file]', campo);
+    input.addEventListener('change', async () => {
+      const lista = archivos.get(campo);
+      const max = Number(campo.dataset.maxFiles || 3);
+      const aviso = $('.aviso-archivo', campo);
+      const boton = $('.subir', campo);
+      const problemas = [];
+      boton.classList.add('procesando');
+      aviso.textContent = 'Procesando…';
+      for(const f of Array.from(input.files)){
+        if(lista.length >= max){ problemas.push(`Solo se permiten ${max} archivo(s).`); break; }
+        try{
+          lista.push(f.type === 'application/pdf' ? await leerPDF(f) : await comprimir(f));
+        }catch(err){ problemas.push(`No se pudo usar "${f.name}": ${err.message}.`); }
+      }
+      input.value = '';
+      boton.classList.remove('procesando');
+      aviso.textContent = problemas.join(' ');
+      aviso.classList.toggle('mal', problemas.length > 0);
+      campo.classList.remove('error');
+      pintarArchivos(campo);
+    });
+  });
+}
+activarArchivos(document);
+
+// ---------- Bloques repetibles: trabajos y referencias ----------
+function crearBloque(tplId, contenedor, idx, opcional){
+  const nodo = $(tplId).content.firstElementChild.cloneNode(true);
+  $('.num', nodo).textContent = idx;
+  nodo.dataset.idx = idx;
+  // ids únicos para radios
+  $$('input[type=radio]', nodo).forEach((r, j) => {
+    const id = `${tplId.slice(4).toLowerCase()}-${idx}-${j}`;
+    r.id = id; r.name = `${tplId.slice(4).toLowerCase()}_${idx}_${r.dataset.k}`;
+    r.nextElementSibling.setAttribute('for', id);
+  });
+  if(opcional){
+    const q = $('.btn-quitar', nodo);
+    q.hidden = false;
+    q.onclick = () => { nodo.remove(); actualizarAgregar(); };
+  }
+  contenedor.appendChild(nodo);
+  activarArchivos(nodo);
+  activarMayusculas(nodo);
+  activarDigitos(nodo);
+  return nodo;
+}
+const contTrab = $('#trabajos');
+crearBloque('#tplTrabajo', contTrab, 1); crearBloque('#tplTrabajo', contTrab, 2);
+function actualizarAgregar(){
+  $('#addTrabajo').style.display = $$('.bloque', contTrab).length >= 3 ? 'none' : '';
+}
+$('#addTrabajo').onclick = () => { crearBloque('#tplTrabajo', contTrab, 3, true); actualizarAgregar(); };
+
+// ---------- Mayúsculas y dígitos ----------
+function activarMayusculas(raiz){
+  $$('input[type="text"], textarea', raiz).forEach(el => {
+    if(el.dataset.may) return; el.dataset.may = 1;
+    el.addEventListener('input', () => {
+      const a = el.selectionStart, b = el.selectionEnd;
+      el.value = el.value.toUpperCase();
+      if(a !== null && b !== null) el.setSelectionRange(a, b);
+    });
+  });
+}
+function activarDigitos(raiz){
+  $$('.solo-digitos', raiz).forEach(el => {
+    if(el.dataset.dig) return; el.dataset.dig = 1;
+    el.addEventListener('input', () => { el.value = el.value.replace(/\D/g,'').slice(0,10); });
+  });
+}
+activarMayusculas(document); activarDigitos(document);
+
+// ---------- Condicionales ----------
+function mostrar(el, visible){ el.style.display = visible ? '' : 'none'; if(!visible) $$('.error', el).concat(el.classList.contains('error')?[el]:[]).forEach(x => x.classList.remove('error')); }
+document.addEventListener('change', e => {
+  const t = e.target;
+  if(t.name === 'tipo_persona'){
+    const moral = t.value === 'Persona moral';
+    $('#lblNombre').textContent = moral ? 'Razón social' : 'Nombre completo';
+    mostrar($('#campoContacto'), moral);
+  }
+  if(t.name === 'taller') mostrar($('#bloqueTaller'), t.value === 'Sí');
+  if(t.name === 'factura') mostrar($('#bloqueFactura'), t.value === 'Sí');
+  if(t.name === 'cobra_visita') mostrar($('#campoCostoVisita'), t.value === 'Sí');
+  const f = t.closest && t.closest('.field');
+  if(f) f.classList.remove('error');
+});
+document.addEventListener('input', e => {
+  const f = e.target.closest && e.target.closest('.field');
+  if(f) f.classList.remove('error');
+});
+
+// Contador de equipo básico
+document.addEventListener('change', e => {
+  if(e.target.name !== 'equipo_basico') return;
+  const c = $('[data-cuenta="equipo_basico"]');
+  const n = $$('input[name="equipo_basico"]:checked').length;
+  c.textContent = n ? `${n} de ${c.dataset.total} seleccionados` : '';
+});
+
+// ---------- Validación ----------
+const visible = el => el.offsetParent !== null;
+function validarCampo(field, stepEl){
+  let ok = true;
+  $$(':scope > input, :scope > select, :scope > textarea', field).forEach(inp => {
+    if(inp.type === 'file' || inp.type === 'checkbox' || inp.type === 'radio') return;
+    const v = (inp.value || '').trim();
+    if(inp.required && !v) ok = false;
+    if(v && inp.type === 'number'){
+      const n = Number(v);
+      if(Number.isNaN(n) || (inp.min !== '' && n < Number(inp.min)) || (inp.max !== '' && n > Number(inp.max))) ok = false;
+    }
+    if(inp.dataset.pattern && !(new RegExp(inp.dataset.pattern)).test(v)) ok = false;
+    if(inp.dataset.minlen && v.replace(/\s+/g,' ').length < Number(inp.dataset.minlen)) ok = false;
+    // Teléfonos falsos: todos iguales (0000000000) o consecutivos (1234567890)
+    if(/^\d{10}$/.test(v) && (/^(\d)\1{9}$/.test(v) || '01234567890123456789'.includes(v) || '98765432109876543210'.includes(v))) ok = false;
+    if(inp.hasAttribute('data-ref-tel') && v){
+      const propio = ($('[name="whatsapp"]').value || '').trim();
+      const otros = $$('[data-ref-tel]').filter(o => o !== inp).map(o => o.value.trim());
+      if(v === propio || otros.includes(v)) ok = false;
+    }
+  });
+  const rg = $(':scope > .radio-group[data-required]', field);
+  if(rg && !$$('input[type=radio]', rg).some(r => r.checked)) ok = false;
+  const cg = $(':scope > .check-group[data-min]', field);
+  if(cg && $$('input[type=checkbox]:checked', cg).length < Number(cg.dataset.min)) ok = false;
+  if(field.classList.contains('archivo-field')){
+    const n = (archivos.get(field) || []).length;
+    if(n < Number(field.dataset.minFiles || 0) || n > Number(field.dataset.maxFiles || 99)) ok = false;
+  }
+  if(field.id === 'campoSucursales' && !$$('input[name="sucursales"]:checked').length) ok = false;
+  if(field.id === 'campoAutoriza' && !$('#chkAutoriza').checked) ok = false;
+  if(field.id === 'campoPrivacidad' && !$('#chkPrivacidad').checked) ok = false;
+  return ok;
+}
+function validarPaso(n){
+  const stepEl = $(`.step[data-step="${n}"]`);
+  let ok = true;
+  $$('.field', stepEl).forEach(field => {
+    if(!visible(field)) return;
+    const v = validarCampo(field, stepEl);
+    field.classList.toggle('error', !v);
+    if(!v) ok = false;
+  });
+  if(!ok){ const p = $('.field.error', stepEl); if(p) p.scrollIntoView({behavior:'smooth', block:'center'}); }
+  return ok;
+}
+
+// ---------- Navegación ----------
+const TOTAL = $$('.step').length;
+let paso = 1;
+function irA(n){
+  $$('.step').forEach(s => s.classList.toggle('active', Number(s.dataset.step) === n));
+  paso = n;
+  const s = $(`.step[data-step="${n}"]`);
+  $('#pasoNombre').textContent = s.dataset.titulo;
+  $('#pasoNum').textContent = `Paso ${n} de ${TOTAL}`;
+  $('#barra').style.width = (n / TOTAL * 100) + '%';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+$$('[data-next]').forEach(b => b.addEventListener('click', () => { if(validarPaso(paso)) irA(Math.min(paso + 1, TOTAL)); }));
+$$('[data-back]').forEach(b => b.addEventListener('click', () => irA(Math.max(paso - 1, 1))));
+irA(1);
+
+// ---------- Payload ----------
+const filesDe = campo => (archivos.get(campo) || []).map(f => ({ nombre: f.nombre, tipo: f.tipo, base64: f.base64 }));
+function construirPayload(){
+  const p = {};
+  const unir = k => $$(`input[name="${k}"]:checked`).map(i => i.value).join(' | ');
+  const val = k => { const el = $(`[name="${k}"]`); return el ? el.value.trim() : ''; };
+  const radio = k => { const el = $(`input[name="${k}"]:checked`); return el ? el.value : ''; };
+
+  p.giro = radio('giro');
+  p.tipo_persona = radio('tipo_persona');
+  p.nombre = val('nombre');
+  p.contacto = p.tipo_persona === 'Persona moral' ? val('contacto') : p.nombre;
+  p.nombre_comercial = val('nombre_comercial');
+  p.whatsapp = val('whatsapp');
+  p.correo = val('correo').toLowerCase();
+  p.ciudad = val('ciudad');
+  p.estado = $('#estadoBase').value;
+  p.tecnicos = radio('tecnicos');
+
+  p.anios = radio('anios');
+  p.equipos = unir('equipos');
+  p.capacidad = radio('capacidad');
+  p.servicios = unir('servicios');
+  p.reporte = radio('reporte');
+
+  p.taller = radio('taller');
+  const conTaller = p.taller === 'Sí';
+  p.taller_direccion = conTaller ? val('taller_direccion') : '';
+  p.taller_maps = conTaller ? val('taller_maps') : '';
+  p.fotos_taller = conTaller ? filesDe($('[data-file="fotos_taller"]')) : [];
+  p.refacciones = radio('refacciones');
+  p.tiempo_refacciones = radio('tiempo_refacciones');
+  p.equipo_basico = unir('equipo_basico');
+
+  p.trabajos = $$('.bloque', contTrab).map(b => ({
+    empresa: $('[data-k=empresa]', b).value.trim(),
+    contacto: $('[data-k=contacto]', b).value.trim(),
+    telefono: $('[data-k=telefono]', b).value.trim(),
+    descripcion: $('[data-k=descripcion]', b).value.trim(),
+    equipo: $('[data-k=equipo]', b).value.trim(),
+    fecha: $('[data-k=fecha]', b).value,
+    monto: $('[data-k=monto]', b).value.trim(),
+    incluye_refacciones: ($('[data-k=incluye_refacciones]:checked', b) || {}).value || '',
+    fotos: filesDe($('.archivo-field', b)),
+  }));
+  p.autoriza_referencias = $('#chkAutoriza').checked ? 'Sí' : 'No';
+
+  p.factura = radio('factura');
+  p.rfc = p.factura === 'Sí' ? val('rfc') : '';
+  p.csf = p.factura === 'Sí' ? filesDe($('[data-file="csf"]')) : [];
+  p.dc3 = filesDe($('[data-file="dc3"]'));
+
+  p.cobertura = $$('input[name="sucursales"]:checked').map(b => ({ estado: b.dataset.estado, sucursal: b.value }));
+  p.urgencias = radio('urgencias');
+  p.tiempo_llegada = radio('tiempo_llegada');
+  p.cobra_visita = radio('cobra_visita');
+  p.costo_visita = p.cobra_visita === 'Sí' ? val('costo_visita') : '';
+  p.precio_preventivo = val('precio_preventivo');
+  p.garantia = radio('garantia');
+  p.formas_pago = unir('formas_pago');
+
+  p.origen = (new URLSearchParams(location.search).get('origen') || 'DIRECTO').toUpperCase();
+  return p;
+}
+
+// ---------- Resumen (modo prueba) ----------
+function pintarResumen(p){
+  const fila = (k, v) => `<tr><td>${esc(k)}</td><td>${esc(v) || '—'}</td></tr>`;
+  const nArch = a => a.length ? `${a.length} archivo(s)` : '—';
+  const pesoMB = (JSON.stringify(p).length / 1024 / 1024).toFixed(2);
+  let h = `<h4>Datos</h4><table>
+    ${fila('Giro', p.giro)}${fila('Tipo de persona', p.tipo_persona)}${fila('Nombre / razón social', p.nombre)}
+    ${fila('Contacto', p.contacto)}${fila('Nombre comercial', p.nombre_comercial)}${fila('WhatsApp', p.whatsapp)}
+    ${fila('Correo', p.correo)}${fila('Ubicación', [p.ciudad, p.estado].filter(Boolean).join(', '))}${fila('Técnicos', p.tecnicos)}</table>
+  <h4>Experiencia</h4><table>
+    ${fila('Años', p.anios)}${fila('Equipos', p.equipos)}${fila('Capacidad máx.', p.capacidad)}
+    ${fila('Sabe hacer', p.servicios)}${fila('Reporte escrito', p.reporte)}</table>
+  <h4>Taller y equipo</h4><table>
+    ${fila('Taller', p.taller)}${fila('Dirección', p.taller_direccion)}${fila('Google Maps', p.taller_maps)}
+    ${fila('Fotos del taller', nArch(p.fotos_taller))}${fila('Refacciones', p.refacciones)}
+    ${fila('Tiempo refacciones', p.tiempo_refacciones)}${fila('Equipo básico', (p.equipo_basico ? p.equipo_basico.split(' | ').length : 0) + ' de 10: ' + p.equipo_basico.split(' | ').join(', '))}</table>`;
+  p.trabajos.forEach((t, i) => { h += `<h4>Trabajo ${i+1}</h4><table>${fila('Empresa', t.empresa)}${fila('Contacto', t.contacto)}${fila('Teléfono', t.telefono)}${fila('Qué hizo', t.descripcion)}${fila('Equipo', t.equipo)}${fila('Fecha', t.fecha)}${fila('Cobró', t.monto ? '$' + Number(t.monto).toLocaleString('es-MX') + (t.incluye_refacciones === 'Sí' ? ' (con refacciones)' : ' (solo mano de obra)') : '')}${fila('Fotos', nArch(t.fotos))}</table>`; });
+  h += `<h4>Formalidad</h4><table>${fila('Autoriza contactar referencias', p.autoriza_referencias)}${fila('Factura', p.factura)}${fila('RFC', p.rfc)}${fila('Constancia fiscal', nArch(p.csf))}${fila('DC-3', nArch(p.dc3))}</table>
+  <h4>Condiciones</h4><table>
+    ${fila('Sucursales', p.cobertura.length + ': ' + p.cobertura.map(c => c.sucursal).join(', '))}
+    ${fila('Urgencias', p.urgencias)}${fila('Tiempo de llegada', p.tiempo_llegada)}
+    ${fila('Cobra visita', p.cobra_visita + (p.costo_visita ? ' ($' + p.costo_visita + ')' : ''))}
+    ${fila('Precio preventivo 5 t', p.precio_preventivo ? '$' + p.precio_preventivo : '')}
+    ${fila('Garantía', p.garantia)}${fila('Formas de pago', p.formas_pago)}${fila('Origen', p.origen)}${fila('Tamaño del envío', pesoMB + ' MB')}</table>`;
+  $('#resumenCuerpo').innerHTML = h;
+}
+
+// ---------- Envío ----------
+$('#provForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  if(!validarPaso(TOTAL)) return;
+  const payload = construirPayload();
+  window.__ultimoPayload = payload;
+  const form = $('#provForm');
+
+  if(MODO_PRUEBA){
+    form.style.display = 'none'; $('#progreso').style.display = 'none';
+    pintarResumen(payload);
+    $('#resumen').classList.add('active');
+    window.scrollTo({top:0});
+    return;
+  }
+  const btn = $('.btn-submit'); btn.disabled = true;
+  form.style.display = 'none'; $('#progreso').style.display = 'none';
+  $('#loadingScreen').classList.add('active');
+  try{
+    const res = await fetch(WEBHOOK_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    $('#loadingScreen').classList.remove('active');
+    if(!res.ok) throw new Error('Estatus ' + res.status);
+    $('#successScreen').classList.add('active');
+  }catch(err){
+    $('#loadingScreen').classList.remove('active');
+    $('#errorScreen').classList.add('active');
+    btn.disabled = false;
+    console.error(err);
+  }
+});
+$('#btnRetry').onclick = () => { $('#errorScreen').classList.remove('active'); $('#provForm').style.display = ''; $('#progreso').style.display = ''; };
+$('#btnEditar').onclick = () => { $('#resumen').classList.remove('active'); $('#provForm').style.display = ''; $('#progreso').style.display = ''; };
+</script>
+
+</body>
+</html>
