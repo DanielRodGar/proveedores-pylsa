@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cotización {{folio}} lista para precio de venta</title>
+<!--
+=====================================================================
+  PYLSA · CORREO AL REGIONAL (Compras ya cotizó: falta precio de venta)
+=====================================================================
+  Plantilla de correo HTML (compatible con Gmail / Outlook: tablas y
+  estilos en línea, sin JavaScript).
+
+  ASUNTO sugerido:
+    Precio de venta pendiente · {{folio}} · Suc. {{sucursal}}
+
+  CONFIDENCIAL: no poner el nombre del proveedor; solo "Proveedor N".
+
+  MARCADORES a sustituir por el sistema:
+    {{folio}} {{fecha}} {{hora}} {{sucursal}} {{solicitante}} {{vendedor}}
+    {{cliente_clave}} {{cliente_nombre}} {{entrega}} {{entrega_detalle}}
+    {{total_kilos}} {{total_partidas}} {{observaciones}}
+    {{fecha_compras}} {{hora_compras}} {{obs_compras}}
+    {{url_cotizar}}  → regional_cotizacion.html?folio={{folio}}
+
+  FILAS DE MATERIALES: repetir el bloque entre los comentarios
+    "INICIO FILA" y "FIN FILA" por cada partida, con
+    {{n}} {{codigo}} {{descripcion}} {{cantidad}} {{unidad}}
+    {{costo}}   → costo unitario sugerido por Compras, ej. "$1,385.10 /pza"
+    {{entrega_dias}} → tiempo de entrega de la opción sugerida, ej. "3 días hábiles" (o "—")
+    {{detalle}} → ej. "Proveedor 1 · LAB Veracruz"  (o "No disponible")
+    (fuera de catálogo: {{codigo}} = "S/C")
+
+  Si no hay observaciones de Compras, quitar la fila OBSERVACIONES.
+=====================================================================
+-->
+</head>
+<body style="margin:0;padding:0;background:#f3f5f8;font-family:Arial,Helvetica,sans-serif;color:#1d2733;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f5f8;">
+<tr><td align="center" style="padding:20px 10px;">
+
+  <table role="presentation" width="640" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:640px;background:#ffffff;border:1px solid #d5dbe3;border-radius:8px;">
+
+    <!-- ENCABEZADO -->
+    <tr>
+      <td style="background:#1f3a5f;padding:14px 20px;border-radius:8px 8px 0 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="color:#ffffff;font-size:17px;font-weight:bold;">Cotización lista para precio de venta</td>
+            <td align="right" style="color:#ffffff;font-size:18px;font-weight:bold;">{{folio}}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- DATOS -->
+    <tr>
+      <td style="padding:16px 20px 6px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:14px;line-height:1.4;">
+          <tr>
+            <td width="50%" valign="top" style="padding:0 10px 10px 0;">
+              <div style="font-size:10px;font-weight:bold;color:#5d6b7a;text-transform:uppercase;">Solicita</div>
+              <b>Suc. {{sucursal}}</b><br><span style="font-size:12px;color:#5d6b7a;">{{solicitante}} · {{fecha}} {{hora}}</span>
+            </td>
+            <td width="50%" valign="top" style="padding:0 0 10px;">
+              <div style="font-size:10px;font-weight:bold;color:#5d6b7a;text-transform:uppercase;">Cliente</div>
+              <b>{{cliente_nombre}}</b><br><span style="font-size:12px;color:#5d6b7a;">Clave {{cliente_clave}} · Vendedor {{vendedor}}</span>
+            </td>
+          </tr>
+          <tr>
+            <td valign="top" style="padding:0 10px 10px 0;">
+              <div style="font-size:10px;font-weight:bold;color:#5d6b7a;text-transform:uppercase;">Entrega</div>
+              <b>{{entrega}}</b><br><span style="font-size:12px;color:#5d6b7a;">{{entrega_detalle}}</span>
+            </td>
+            <td valign="top" style="padding:0 0 10px;">
+              <div style="font-size:10px;font-weight:bold;color:#5d6b7a;text-transform:uppercase;">Cotizado por Compras</div>
+              <b>{{fecha_compras}} {{hora_compras}}</b><br><span style="font-size:12px;color:#5d6b7a;">{{total_partidas}} materiales · {{total_kilos}} kg</span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- MATERIALES -->
+    <tr>
+      <td style="padding:0 20px 10px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:13px;border-collapse:collapse;">
+          <tr style="background:#eef2f7;">
+            <th align="left"  style="padding:6px;font-size:10px;color:#5d6b7a;text-transform:uppercase;">#</th>
+            <th align="left"  style="padding:6px;font-size:10px;color:#5d6b7a;text-transform:uppercase;">Código</th>
+            <th align="left"  style="padding:6px;font-size:10px;color:#5d6b7a;text-transform:uppercase;">Descripción</th>
+            <th align="right" style="padding:6px;font-size:10px;color:#5d6b7a;text-transform:uppercase;">Cantidad</th>
+            <th align="right" style="padding:6px;font-size:10px;color:#5d6b7a;text-transform:uppercase;">Costo unit.</th>
+            <th align="right" style="padding:6px;font-size:10px;color:#5d6b7a;text-transform:uppercase;">Entrega<br>(días hábiles)</th>
+          </tr>
+          <!-- INICIO FILA -->
+          <tr>
+            <td style="padding:6px;border-bottom:1px solid #e6eaf0;color:#5d6b7a;">{{n}}</td>
+            <td style="padding:6px;border-bottom:1px solid #e6eaf0;color:#c0392b;font-weight:bold;">{{codigo}}</td>
+            <td style="padding:6px;border-bottom:1px solid #e6eaf0;">{{descripcion}}<br><span style="font-size:11px;color:#5d6b7a;">{{detalle}}</span></td>
+            <td align="right" style="padding:6px;border-bottom:1px solid #e6eaf0;white-space:nowrap;">{{cantidad}} {{unidad}}</td>
+            <td align="right" style="padding:6px;border-bottom:1px solid #e6eaf0;white-space:nowrap;font-weight:bold;">{{costo}}</td>
+            <td align="right" style="padding:6px;border-bottom:1px solid #e6eaf0;white-space:nowrap;">{{entrega_dias}}</td>
+          </tr>
+          <!-- FIN FILA -->
+        </table>
+      </td>
+    </tr>
+
+    <!-- OBSERVACIONES (quitar si no hay) -->
+    <tr>
+      <td style="padding:0 20px 12px;">
+        <div style="background:#f3f5f8;border-radius:6px;padding:8px 10px;font-size:13px;">
+          <b>Observaciones de Compras:</b> {{obs_compras}}
+        </div>
+      </td>
+    </tr>
+
+    <!-- BOTÓN -->
+    <tr>
+      <td align="center" style="padding:8px 20px 22px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td align="center" bgcolor="#1f3a5f" style="border-radius:7px;">
+              <a href="{{url_cotizar}}" target="_blank"
+                 style="display:inline-block;padding:13px 34px;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:7px;">
+                Poner precio de venta &rarr;
+              </a>
+            </td>
+          </tr>
+        </table>
+        <div style="font-size:11px;color:#5d6b7a;margin-top:8px;">
+          Si el botón no funciona, copia este enlace en el navegador:<br>
+          <a href="{{url_cotizar}}" style="color:#2d5687;word-break:break-all;">{{url_cotizar}}</a>
+        </div>
+      </td>
+    </tr>
+
+    <!-- PIE -->
+    <tr>
+      <td style="padding:10px 20px;border-top:1px solid #e6eaf0;font-size:11px;color:#5d6b7a;">
+        Correo automático del proceso de cotizaciones PYLSA. Captura el precio de venta desde el botón "Poner precio de venta" para que quede registrado el tiempo de respuesta.
+      </td>
+    </tr>
+
+  </table>
+
+</td></tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solicitud de compra {{folio}}</title>
+<!--
+=====================================================================
+  PYLSA · CORREO A COMPRAS · SOLICITUD DE COMPRA (el cliente ya pagó)
+=====================================================================
+  Se envía a COMPRAS cuando DIRECCIÓN AUTORIZA la compra (botón del correo
+  correo_autorizacion_direccion.html → autorizacion_compra.html). Plantilla de correo HTML (compatible con
+  Gmail / Outlook: tablas y estilos en línea, sin JavaScript).
+
+  ASUNTO sugerido:
+    COMPRA AUTORIZADA · {{folio}} · Suc. {{sucursal}} · Autorizó {{autorizo}}
+
+  ADJUNTOS DEL CORREO (los archivos que subió la sucursal):
+    - Comprobante de pago
+    - Cotización que pagó el cliente
+
+  Aquí SÍ van los nombres reales de proveedor (es para Compras), con TODAS
+  las opciones que cotizó, y la línea de autorización: costo, precio de
+  venta y utilidad.
+
+  MARCADORES a sustituir por el sistema:
+    {{folio}} {{sucursal}} {{solicitante}} {{fecha_pago}} {{hora_pago}}
+    {{cliente_nombre}} {{cliente_clave}} {{vendedor}}
+    {{entrega_tipo}}      → "Entrega directa" o "Entrega en sucursal"
+    {{entrega_lugar}}     → dirección completa (calle, colonia, C.P., municipio,
+                            estado) o "Suc. Tuxtepec 1 · dirección"
+    {{entrega_ref}}       → referencias (vacío si no hay)
+    {{url_maps}}          → enlace de Google Maps (si es sucursal, quitar el enlace)
+    {{recibe_nombre}} {{recibe_tel}}
+    {{descarga_dias}}     → ej. "Lunes a viernes" o "L, M, Mi, J, V, S"
+    {{descarga_horario}}  → ej. "08:00 a 17:00"
+    {{descarga_ind}}      → indicaciones (ej. "Se requiere grúa"); "—" si no hay
+    {{obs_sucursal}}      → observaciones para Compras (quitar fila si no hay)
+    {{adjuntos}}          → nombres de archivo, ej. "comprobante.pdf · cotizacion.pdf"
+    {{total_partidas}}
+    {{autorizo}} {{fecha_aut}} {{hora_aut}} {{comentario_aut}}  (quitar la línea del comentario si no hay)
+    {{costo_total_general}} {{venta_total_general}} {{utilidad_total_general}} {{utilidad_pct_general}}
+
+  BLOQUES DE MATERIALES: repetir el bloque entre los comentarios
+    "INICIO MATERIAL" y "FIN MATERIAL" por cada partida vendida, con
+    {{n}} {{codigo}} {{descripcion}} {{cantidad}} {{unidad}}
+    {{costo}}         → costo unitario de la opción sugerida, ej. "$1,385.10 /pza"
+    {{precio_venta}}  → precio de venta autorizado/vendido, ej. "$1,610.00 /pza"
+    {{utilidad}}      → utilidad por unidad, ej. "$224.90 /pza"
+    {{utilidad_pct}}  → % de utilidad, ej. "14.0 %"
+                        SOBRE VENTA: (precio − costo) ÷ precio
+    {{utilidad_total}}→ utilidad × cantidad, ej. "$83,662.80"
+    Dentro de cada material, repetir el bloque entre "INICIO PROVEEDOR" y
+    "FIN PROVEEDOR" por cada opción que cotizó Compras, con
+    {{proveedor}} {{p_costo}} {{p_dias}} {{p_disp}} {{p_lab}} {{p_obs}}
+    {{p_marca}}  → "★ Sugerido" en la opción sugerida; vacío en las demás
+    {{p_fondo}}  → "#e9f7ef" en la sugerida; "#ffffff" en las demás
+=====================================================================
+-->
+</head>
+<body style="margin:0;padding:0;background:#f3f5f8;font-family:Arial,Helvetica,sans-serif;color:#1d2733;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f5f8;">
+<tr><td align="center" style="padding:20px 10px;">
+
+  <table role="presentation" width="680" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:680px;background:#ffffff;border:1px solid #d5dbe3;border-radius:8px;">
+
+    <!-- ENCABEZADO -->
+    <tr>
+      <td style="background:#1e8449;padding:14px 20px;border-radius:8px 8px 0 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="color:#ffffff;font-size:17px;font-weight:bold;">Solicitud de compra autorizada<br><span style="font-size:12px;font-weight:normal;">El cliente ya pagó</span></td>
+            <td align="right" style="color:#ffffff;font-size:18px;font-weight:bold;">{{folio}}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- AUTORIZACIÓN -->
+    <tr>
+      <td style="padding:14px 20px 0;">
+        <div style="background:#e9f7ef;border:1px solid #1e8449;border-radius:6px;padding:9px 12px;font-size:13px;">
+          &#10004; <b>Autorizado por {{autorizo}}</b> el {{fecha_aut}} a las {{hora_aut}}
+          <div style="font-size:12px;color:#1d2733;margin-top:3px;">Comentario: {{comentario_aut}}</div>
+        </div>
+      </td>
+    </tr>
+
+    <!-- DATOS -->
+    <tr>
+      <td style="padding:16px 20px 4px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:14px;line-height:1.4;">
+          <tr>
+            <td width="50%" valign="top" style="padding:0 10px 10px 0;">
+              <div style="font-size:10px;font-weight:bold;color:#5d6b7a;text-transform:uppercase;">Solicita</div>
+              <b>Suc. {{sucursal}}</b><br><span style="font-size:12px;color:#5d6b7a;">{{solicitante}} · {{fecha_pago}} {{hora_pago}}</span>
+            </td>
+            <td width="50%" valign="top" style="padding:0 0 10px;">
+              <div style="font-size:10px;font-weight:bold;color:#5d6b7a;text-transform:uppercase;">Cliente</div>
+              <b>{{cliente_nombre}}</b><br><span style="font-size:12px;color:#5d6b7a;">Clave {{cliente_clave}} · Vendedor {{vendedor}}</span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- MATERIALES -->
+    <tr>
+      <td style="padding:0 20px 4px;">
+        <div style="font-size:13px;font-weight:bold;color:#1f3a5f;margin-bottom:6px;">Materiales a comprar ({{total_partidas}})</div>
+      </td>
+    </tr>
+    <!-- INICIO MATERIAL -->
+    <tr>
+      <td style="padding:0 20px 12px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #d5dbe3;border-radius:6px;font-size:13px;border-collapse:separate;">
+          <tr>
+            <td style="background:#eef2f7;padding:7px 10px;border-radius:6px 6px 0 0;">
+              <span style="color:#5d6b7a;font-weight:bold;">{{n}}</span>&nbsp;
+              <span style="color:#c0392b;font-weight:bold;">{{codigo}}</span>&nbsp;
+              <b>{{descripcion}}</b>
+              <span style="float:right;font-weight:bold;white-space:nowrap;">{{cantidad}} {{unidad}}</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 6px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:12px;border-collapse:collapse;">
+                <tr>
+                  <th align="left"  style="padding:5px 4px;font-size:9.5px;color:#5d6b7a;text-transform:uppercase;">Proveedor</th>
+                  <th align="right" style="padding:5px 4px;font-size:9.5px;color:#5d6b7a;text-transform:uppercase;">Costo unit.</th>
+                  <th align="right" style="padding:5px 4px;font-size:9.5px;color:#5d6b7a;text-transform:uppercase;">Días háb.</th>
+                  <th align="right" style="padding:5px 4px;font-size:9.5px;color:#5d6b7a;text-transform:uppercase;">Disponible</th>
+                  <th align="left"  style="padding:5px 4px;font-size:9.5px;color:#5d6b7a;text-transform:uppercase;">LAB</th>
+                  <th align="left"  style="padding:5px 4px;font-size:9.5px;color:#5d6b7a;text-transform:uppercase;">Observaciones</th>
+                </tr>
+                <!-- INICIO PROVEEDOR -->
+                <tr style="background:{{p_fondo}};">
+                  <td style="padding:5px 4px;border-top:1px solid #e6eaf0;"><b>{{proveedor}}</b><br><span style="color:#1e8449;font-size:10px;font-weight:bold;">{{p_marca}}</span></td>
+                  <td align="right" style="padding:5px 4px;border-top:1px solid #e6eaf0;white-space:nowrap;">{{p_costo}}</td>
+                  <td align="right" style="padding:5px 4px;border-top:1px solid #e6eaf0;">{{p_dias}}</td>
+                  <td align="right" style="padding:5px 4px;border-top:1px solid #e6eaf0;white-space:nowrap;">{{p_disp}}</td>
+                  <td style="padding:5px 4px;border-top:1px solid #e6eaf0;">{{p_lab}}</td>
+                  <td style="padding:5px 4px;border-top:1px solid #e6eaf0;color:#5d6b7a;font-style:italic;">{{p_obs}}</td>
+                </tr>
+                <!-- FIN PROVEEDOR -->
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#fbfcfd;border-top:1px solid #d5dbe3;padding:7px 10px;border-radius:0 0 6px 6px;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:12px;">
+                <tr>
+                  <td><span style="font-size:9.5px;color:#5d6b7a;text-transform:uppercase;font-weight:bold;">Costo</span><br><b>{{costo}}</b></td>
+                  <td><span style="font-size:9.5px;color:#5d6b7a;text-transform:uppercase;font-weight:bold;">Precio de venta</span><br><b style="color:#1f3a5f;">{{precio_venta}}</b></td>
+                  <td><span style="font-size:9.5px;color:#5d6b7a;text-transform:uppercase;font-weight:bold;">Utilidad</span><br><b style="color:#1e8449;">{{utilidad}} · {{utilidad_pct}}</b></td>
+                  <td align="right"><span style="font-size:9.5px;color:#5d6b7a;text-transform:uppercase;font-weight:bold;">Utilidad total</span><br><b style="color:#1e8449;">{{utilidad_total}}</b></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+    <!-- FIN MATERIAL -->
+
+    <!-- TOTALES -->
+    <tr>
+      <td style="padding:0 20px 12px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#1f3a5f;border-radius:6px;color:#ffffff;font-size:12px;">
+          <tr>
+            <td style="padding:9px 12px;"><span style="font-size:9.5px;text-transform:uppercase;opacity:.8;">Costo total</span><br><b style="font-size:14px;">{{costo_total_general}}</b></td>
+            <td style="padding:9px 12px;"><span style="font-size:9.5px;text-transform:uppercase;opacity:.8;">Venta total</span><br><b style="font-size:14px;">{{venta_total_general}}</b></td>
+            <td align="right" style="padding:9px 12px;"><span style="font-size:9.5px;text-transform:uppercase;opacity:.8;">Utilidad</span><br><b style="font-size:15px;color:#9be7b4;">{{utilidad_total_general}} · {{utilidad_pct_general}}</b></td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- ENTREGA -->
+    <tr>
+      <td style="padding:0 20px 12px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f5f8;border-radius:6px;font-size:13px;line-height:1.45;">
+          <tr>
+            <td valign="top" width="55%" style="padding:10px 12px;">
+              <div style="font-size:10px;font-weight:bold;color:#5d6b7a;text-transform:uppercase;">{{entrega_tipo}}</div>
+              <b>{{entrega_lugar}}</b><br>
+              <span style="font-size:12px;color:#5d6b7a;">{{entrega_ref}}</span><br>
+              <a href="{{url_maps}}" target="_blank" style="color:#2d5687;font-size:12px;">Ver ubicación en Google Maps</a>
+            </td>
+            <td valign="top" width="45%" style="padding:10px 12px;border-left:1px solid #d5dbe3;">
+              <div style="font-size:10px;font-weight:bold;color:#5d6b7a;text-transform:uppercase;">Recibe</div>
+              <b>{{recibe_nombre}}</b><br>Tel. {{recibe_tel}}
+              <div style="font-size:10px;font-weight:bold;color:#5d6b7a;text-transform:uppercase;margin-top:8px;">Descarga</div>
+              {{descarga_dias}} · {{descarga_horario}}<br>
+              <span style="font-size:12px;color:#5d6b7a;">{{descarga_ind}}</span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- OBSERVACIONES (quitar si no hay) -->
+    <tr>
+      <td style="padding:0 20px 12px;">
+        <div style="border-left:3px solid #2d5687;padding:4px 10px;font-size:13px;">
+          <b>Observaciones de la sucursal:</b> {{obs_sucursal}}
+        </div>
+      </td>
+    </tr>
+
+    <!-- ADJUNTOS -->
+    <tr>
+      <td style="padding:0 20px 18px;">
+        <div style="font-size:12px;color:#1d2733;background:#e9f7ef;border:1px solid #b8e0c6;border-radius:6px;padding:8px 10px;">
+          &#128206; <b>Adjuntos en este correo:</b> comprobante de pago y cotización pagada por el cliente<br>
+          <span style="color:#5d6b7a;">{{adjuntos}}</span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- PIE -->
+    <tr>
+      <td style="padding:10px 20px;border-top:1px solid #e6eaf0;font-size:11px;color:#5d6b7a;">
+        Correo automático del proceso de cotizaciones PYLSA. Compra autorizada por dirección. Los costos y proveedores son los que cotizó Compras en la solicitud {{folio}}.
+      </td>
+    </tr>
+
+  </table>
+
+</td></tr>
+</table>
+</body>
+</html>

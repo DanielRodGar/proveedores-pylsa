@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cotización de Compras · PYLSA</title>
+<!--
+=====================================================================
+  PYLSA · PROCESO DE COTIZACIÓN · PASO 2: RESPUESTA DE COMPRAS
+=====================================================================
+  NOTAS PARA INTEGRACIÓN:
+
+  1) USUARIO LOGUEADO (Compras)
+     Igual que en el paso 1: window.PYLSA_USUARIO o sessionStorage /
+     localStorage "pylsa_usuario" (JSON). Sin sesión → MODO DEMO.
+
+  2) SOLICITUD A COTIZAR
+     La pantalla necesita la solicitud que envió la sucursal (el mismo
+     JSON del paso 1 + "folio"). Ver obtenerSolicitud(). Busca, en orden:
+       a) window.PYLSA_SOLICITUD (objeto inyectado por el sistema)
+       b) CONFIG.ENDPOINT_SOLICITUD + "?folio=XXXX" (GET → JSON),
+          tomando el folio de la URL: compras_cotizacion.html?folio=COT-000123
+     Si no hay ninguna → usa una solicitud de ejemplo (MODO DEMO).
+
+  3) ENVÍO
+     CONFIG.ENDPOINT_RESPUESTA = URL que recibe un POST JSON (ver
+     construirPayload()). Vacío → MODO DEMO (muestra el JSON).
+     El backend debe guardar fecha/hora de respuesta, cambiar el estado
+     a "Costeada" (o "No disponible") y avisar al regional.
+=====================================================================
+-->
+<style>
+  :root{
+    --azul:#1f3a5f; --azul2:#2d5687; --gris:#f3f5f8; --borde:#d5dbe3;
+    --texto:#1d2733; --suave:#5d6b7a; --rojo:#c0392b; --verde:#1e8449; --ambar:#b9770e;
+    --prov:#f7f9fc; --mejor:#e6f4ea;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--gris);color:var(--texto)}
+  header{background:var(--azul);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  header h1{margin:0;font-size:19px}
+  header .folio{font-size:20px;font-weight:800;letter-spacing:.5px}
+  .usuario{background:var(--azul2);color:#fff;padding:8px 18px;font-size:13px;display:flex;flex-wrap:wrap;gap:6px 18px}
+  .demo{background:#fff4e0;color:var(--ambar);border-bottom:1px solid #f0d9a8;padding:8px 18px;font-size:13px}
+  main{max-width:1400px;margin:0 auto;padding:14px}
+  .card{background:#fff;border:1px solid var(--borde);border-radius:10px;padding:14px 16px;margin-bottom:14px}
+  .card h2{margin:0 0 10px;font-size:15px;color:var(--azul)}
+  .sol{display:grid;grid-template-columns:repeat(6,auto);justify-content:space-between;gap:10px 22px;background:#fff;border:1px solid var(--borde);border-left:4px solid var(--azul2);border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:14px;line-height:1.35}
+  .sol i{display:block;font-style:normal;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--suave);margin-bottom:2px}
+  .sol b{font-size:15px}
+  .sol small{display:block;font-size:12px;color:var(--suave)}
+  .sol a{color:var(--azul2)}
+  .sol .obs{grid-column:1/-1;font-size:13px;background:var(--gris);border-radius:6px;padding:6px 10px}
+  @media(max-width:1000px){.sol{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:600px){.sol{grid-template-columns:1fr 1fr}}
+  .resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 18px;font-size:14px}
+  .resumen .et{display:block;font-size:11px;font-weight:700;text-transform:uppercase;color:var(--suave);margin-bottom:2px}
+  .resumen a{color:var(--azul2)}
+  .obs-suc{margin-top:10px;font-size:13px;background:var(--gris);border-radius:7px;padding:8px 10px}
+  input,select,textarea{width:100%;padding:7px 8px;border:1px solid var(--borde);border-radius:6px;font-size:14px;font-family:inherit;background:#fff}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--azul2);border-color:var(--azul2)}
+  textarea{resize:vertical;min-height:56px}
+
+  /* ---- Materiales con opciones (compacto) ---- */
+  .cols,.op{display:grid;grid-template-columns:34px minmax(130px,1.1fr) 160px 62px 70px minmax(120px,1fr) minmax(150px,1.4fr) 92px 74px;gap:5px;align-items:center}
+  .op .disp{text-align:right}
+  .cols{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--suave);padding:0 10px 4px;position:sticky;top:0;background:#fff;z-index:5;border-bottom:2px solid var(--borde);margin-bottom:6px}
+  .mat{border:1px solid #e1e6ed;border-radius:7px;margin-bottom:6px;overflow:hidden}
+  .mat.no-disp .ops{opacity:.35;pointer-events:none}
+  .mat-head{display:grid;grid-template-columns:22px 58px 1fr auto auto;gap:10px;align-items:center;background:#f3f6fa;padding:5px 10px;font-size:13px}
+  .mat-head .n{font-weight:700;color:var(--suave);text-align:center}
+  .cod{font-weight:700;color:var(--rojo)}
+  .cod.sc{color:var(--ambar)}
+  .mat-head .desc{font-weight:600;line-height:1.25}
+  .mat-head .desc small{display:block;font-weight:400;color:var(--suave);font-size:11px}
+  .mat-head .cant{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;line-height:1.2}
+  .mat-head .cant small{display:block;color:var(--suave);font-size:10.5px}
+  .res{text-align:right;min-width:150px;line-height:1.2}
+  .res b{display:block;font-size:14px;font-variant-numeric:tabular-nums}
+  .res small{display:block;color:var(--suave);font-size:10.5px}
+  .res b small{display:inline}
+  .res .com{font-style:italic;color:var(--texto);max-width:240px;margin-left:auto}
+  .nd{display:flex;justify-content:flex-end;align-items:center;gap:3px;font-size:10.5px;color:var(--rojo);cursor:pointer;margin-top:1px}
+  .nd input{width:auto;margin:0}
+  .ops{padding:3px 10px 4px}
+  .op{padding:2px 0}
+  .op input,.op select{padding:4px 6px;font-size:13px;border-radius:5px;height:28px}
+  .op .precio{text-align:right}
+  .op.mejor .precio{border-color:var(--verde);background:var(--mejor)}
+  .op.elegida{background:linear-gradient(90deg,#e9f7ef 0,#f5fbf7 60%,transparent)}
+  .op input[type=radio]{width:auto;height:auto;margin:0 auto;transform:scale(1.1);cursor:pointer}
+  .pcell{display:grid;grid-template-columns:1fr 58px;gap:3px;align-items:center}
+  .pcell select{padding:2px;font-size:12px}
+  .pcell .pu-fijo{font-size:12px;color:var(--suave);padding-left:4px}
+  .pcell .conv{grid-column:1/-1;font-size:10px;color:var(--azul2);text-align:right;line-height:1.1}
+  .op .imp{text-align:right;line-height:1.1;white-space:nowrap;overflow:hidden}
+  .op .imp small{display:block;color:var(--verde);font-size:10px;font-weight:700}
+  .op .imp small.sug{display:inline-block;background:var(--verde);color:#fff;border-radius:9px;padding:1px 7px;margin-bottom:1px}
+  .op .imp small.mp{color:var(--verde);font-weight:600}
+  .res .lbl-sug{color:var(--verde)!important;font-weight:700;text-transform:uppercase;font-size:9.5px!important;letter-spacing:.3px}
+  .parc{display:block;color:var(--ambar)!important;font-weight:700;font-size:10px}
+  .op .acc{display:flex;gap:2px;justify-content:flex-end}
+  .ico{background:none;border:1px solid transparent;border-radius:5px;cursor:pointer;font-size:13px;padding:2px 5px;color:var(--suave);line-height:1.2}
+  .ico:hover{border-color:var(--borde);background:#fff}
+  .ico.on{background:#fff4e0;border-color:#f0d9a8}
+  .ico.txt{font-size:11px;color:var(--azul2);white-space:nowrap}
+  .ico.q:hover{color:var(--rojo)}
+  .op-extra{grid-column:2/-1;grid-template-columns:150px 1fr;gap:6px;background:#fafbfc;border:1px solid #e6eaf0;border-radius:6px;padding:5px 7px;margin:2px 0}
+  .op-extra label{display:block;font-size:9.5px;font-weight:700;text-transform:uppercase;color:var(--suave);margin-bottom:2px}
+  .op.parcial [data-f="disp"]{border-color:var(--ambar);background:#fff8ec}
+  .lnk{background:none;border:none;color:var(--azul2);font-size:11.5px;cursor:pointer;padding:2px 0}
+  .lnk:hover{text-decoration:underline}
+  .add-op{margin:1px 0 0 28px}
+  @media(max-width:900px){
+    .cols{display:none}
+    .mat-head{grid-template-columns:22px 1fr auto}
+    .mat-head .desc{grid-column:1/-1}
+    .op{grid-template-columns:22px 1fr 1fr;row-gap:4px;padding:4px 0;border-top:1px dashed #e3e8ef}
+    .op .prov{grid-column:2/-1}
+    .op .pcell{grid-column:2}
+    .op [data-f="dias"]{grid-column:3}
+    .op .disp{grid-column:2}
+    .op .lab{grid-column:2/-1}
+    .op .coment{grid-column:2/-1}
+    .op .imp,.op .acc{grid-column:2/-1;text-align:left;justify-content:flex-start}
+    .op-extra{grid-template-columns:1fr}
+  }
+  /* ---- Resumen para proveedor ---- */
+  details.rp{background:#fff;border:1px solid var(--borde);border-radius:8px;margin-bottom:12px}
+  details.rp summary{cursor:pointer;padding:9px 12px;font-size:14px;font-weight:600;color:var(--azul)}
+  details.rp summary small{font-weight:400;color:var(--suave);font-size:12px;margin-left:6px}
+  .rp-body{padding:0 12px 12px}
+  .rp-opts{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;font-size:12px;margin-bottom:8px}
+  .rp-opts label{display:flex;align-items:center;gap:4px;cursor:pointer}
+  .rp-opts input{width:auto;margin:0}
+  .wa{background:#e7f6dc;border-radius:10px 10px 10px 2px;padding:10px 12px;max-width:560px;font-size:14px;line-height:1.45;color:#111;box-shadow:0 1px 1px rgba(0,0,0,.08)}
+  .wa p{margin:0}
+  .wa ul{list-style:none;margin:6px 0;padding:0}
+  .wa li{display:flex;align-items:flex-start;gap:7px;padding:1px 0}
+  .wa li input{width:auto;margin:4px 0 0;cursor:pointer}
+  .wa li.off span{text-decoration:line-through;opacity:.4}
+  .wa .vacio{color:var(--suave);font-style:italic}
+  .acciones{display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap}
+  .btn{border:none;border-radius:8px;padding:10px 16px;font-size:14px;font-weight:600;cursor:pointer}
+  .btn-sec{background:#e6edf5;color:var(--azul)}
+  .btn-pri{background:var(--azul);color:#fff;font-size:16px;padding:14px;width:100%}
+  .btn-pri:disabled{opacity:.6;cursor:wait}
+  .hint{font-size:12px;color:var(--suave)}
+  .msg{padding:14px;border-radius:8px;margin-bottom:14px;display:none}
+  .msg.ok{display:block;background:#e9f7ef;border:1px solid var(--verde);color:var(--verde)}
+  .msg.err{display:block;background:#fdecea;border:1px solid var(--rojo);color:var(--rojo)}
+  pre{background:#1d2733;color:#d6e2f0;padding:12px;border-radius:8px;font-size:12px;overflow:auto;max-height:360px}
+</style>
+</head>
+<body>
+<header>
+  <h1>Cotización de Compras</h1>
+  <span class="folio" id="hFolio"></span>
+</header>
+<div id="barraUsuario" class="usuario"></div>
+<div id="avisoDemo" class="demo" style="display:none"></div>
+
+<main>
+  <div id="msg" class="msg"></div>
+
+  <div id="contenido">
+    <!-- RESUMEN DE LA SOLICITUD (compacto) -->
+    <div class="sol" id="resumen"></div>
+
+    <!-- RESUMEN PARA PROVEEDOR (plegable) -->
+    <details class="rp" id="cardProv">
+      <summary>💬 Mensaje para el proveedor <small>sin datos del cliente</small></summary>
+      <div class="rp-body">
+        <div class="rp-opts">
+          <label><input type="checkbox" id="rpKg"> Peso</label>
+          <label><input type="checkbox" id="rpEnt" checked> Lugar de entrega</label>
+          <label><input type="checkbox" id="rpCod"> Código PYLSA</label>
+          <span class="hint">· Desmarca los materiales que no quieras mandar a este proveedor.</span>
+        </div>
+        <div class="wa" id="rpHoja"></div>
+        <div class="acciones" style="margin-top:8px">
+          <button type="button" class="btn btn-sec" id="rpCopiar">Copiar para WhatsApp</button>
+          <span class="hint" id="rpOk"></span>
+        </div>
+      </div>
+    </details>
+
+    <!-- MATERIALES Y OPCIONES -->
+    <div class="card">
+      <h2>Cotización por material</h2>
+      <p class="hint" style="margin:-6px 0 8px">Precios <b>sin IVA</b>. Si el proveedor cotiza por kg, elige <b>/kg</b> y se convierte solo. Marca con <b>●</b> la opción que <b>sugieres</b> al regional (por defecto, la más barata).</p>
+      <div class="cols"><span title="Opción sugerida al regional">Sug.</span><span>Proveedor</span><span>Precio unit. sin IVA</span><span title="Tiempo de entrega en días hábiles">Días háb.</span><span>Disponible</span><span>LAB (dónde)</span><span>Observaciones del proveedor</span><span></span><span></span></div>
+      <div id="materiales"></div>
+    </div>
+
+    <!-- OBSERVACIONES COMPRAS -->
+    <div class="card">
+      <h2>Observaciones de Compras</h2>
+      <textarea id="obsCompras" placeholder="Vigencia de precios, condiciones de pago, mínimos de compra, etc."></textarea>
+    </div>
+
+    <button type="button" class="btn btn-pri" id="enviar">Enviar cotización al regional</button>
+  </div>
+</main>
+
+<script>
+/* ⚠ MODO PRUEBAS: usuario fijo mientras no hay login del portal. Quitar este bloque en producción. */
+window.PYLSA_USUARIO = window.PYLSA_USUARIO || { id_usuario:"prueba-com", nombre:"Compras (prueba)", puesto:"Compras", correo:"danielrodgar54@gmail.com", sucursal:"Oficinas", id_sucursal:"OFI" };
+</script>
+<script>
+/* ===================== CONFIGURACIÓN ===================== */
+const CONFIG = {
+  ENDPOINT_SOLICITUD: "https://danielrodriguez.app.n8n.cloud/webhook/cot-datos?vista=compras",   // GET ?folio=... → JSON de la solicitud
+  ENDPOINT_RESPUESTA: "https://danielrodriguez.app.n8n.cloud/webhook/cot-evento",   // POST JSON con la respuesta de Compras
+  MAX_OPCIONES: 3,          // opciones (proveedores) por material
+  // Dirección de cada sucursal para mostrar en "Entrega" (completar).
+  // Si el backend manda entrega.direccion_sucursal, se usa esa.
+  SUCURSALES_DIRECCIONES: {
+    "Tuxtepec 1": "", "Tuxtepec 2": "", "Cosamaloapan": "", "Tierra Blanca": "", "Xalapa": "", "Poza Rica": "",
+    "Cardel": "", "Golfo": "", "Centro": "", "Tejería": "", "Sur": "", "Acerofertas": "",
+    "Palenque": "Col. Magisterial, Palenque, Chis.", "Huimanguillo": "Col. El Desecho, Huimanguillo, Tab.",
+    "Puebla": "Dirección de ejemplo, Puebla, Pue."
+  },
+  // Proveedores frecuentes para sugerir (opcional; también aprende los que se escriben)
+  PROVEEDORES_SUGERIDOS: [],
+  // "LAB (dónde)" se captura siempre a mano (sin sugerencias)
+};
+/* ========================================================= */
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = (n, d=2) => (+n).toLocaleString("es-MX", {minimumFractionDigits:d, maximumFractionDigits:d});
+const fmt$ = n => "$" + fmt(n);
+const UM_CORTA = {PIEZA:"pza", KILOGRAMO:"kg", METRO:"m", "METRO LINEAL":"ml", "METRO CUADRADO":"m²"};
+const umc = u => UM_CORTA[u] || String(u||"").toLowerCase();
+const clave = s => String(s||"").trim().toUpperCase().replace(/\s+/g," ");
+
+/* ---------- Usuario ---------- */
+function obtenerUsuario(){
+  if (window.PYLSA_USUARIO) return window.PYLSA_USUARIO;
+  for (const st of [sessionStorage, localStorage]) {
+    try { const v = st.getItem("pylsa_usuario"); if (v) return JSON.parse(v); } catch(_){}
+  }
+  return null;
+}
+const usuarioReal = obtenerUsuario();
+const USUARIO = usuarioReal || { id_usuario:"demo", nombre:"Compras (prueba)", puesto:"Compras", correo:"compras@pylsa.com", sucursal:"Oficinas", id_sucursal:"OFI" };
+
+/* ---------- Solicitud de ejemplo (modo demo) ---------- */
+const SOLICITUD_DEMO = {
+  folio: "COT-DEMO", fecha_solicitud: "2026-11-19", hora_solicitud: "13:05",
+  usuario: { nombre:"Juan Pérez", puesto:"Vendedor", sucursal:"Tuxtepec 1", correo:"juan@pylsa.com" },
+  cliente: { clave:"004512", nombre:"Constructora del Golfo" }, vendedor: "Juan Pérez",
+  entrega: { tipo:"directa", descripcion:"Entrega directa en dirección", sucursal_entrega:"",
+             direccion:{ municipio:"Boca del Río", estado:"Veracruz", cp:"94290", google_maps:"https://maps.app.goo.gl/ejemplo" } },
+  observaciones: "El cliente necesita el material la próxima semana.",
+  partidas: [
+    { partida:1, en_catalogo:true, clave:"001937", articulo:"PTR 3 X 3 C-3/16 A 6.10 MTS (PZ)", unidad:"PIEZA", linea:"P.T.R.", cantidad:372, peso_unitario_kg:48.6, kilos:18079.2, nota:"" },
+    { partida:2, en_catalogo:true, clave:"001938", articulo:"PTR 4 X 4 C-3/16 A 6.10 MTS (PZ)", unidad:"PIEZA", linea:"P.T.R.", cantidad:171, peso_unitario_kg:66.2, kilos:11320.2, nota:"" },
+    { partida:3, en_catalogo:true, clave:"002966", articulo:"VIGA I.P.R. 6 X 4 EN (13.3 KG/MT) DE 9LBS \"L\"", unidad:"KILOGRAMO", linea:"VIGA I.P.R.", cantidad:350, peso_unitario_kg:1, kilos:350, nota:"" },
+    { partida:4, en_catalogo:false, clave:"", articulo:"Lámina inoxidable cal 18 4x8", unidad:"PIEZA", linea:"", cantidad:4, peso_unitario_kg:null, kilos:null, nota:"acabado 2B" }
+  ],
+  total_kilos: 29749.4, partidas_sin_peso: 1
+};
+
+async function obtenerSolicitud(){
+  if (window.PYLSA_SOLICITUD) return { s: window.PYLSA_SOLICITUD, demo:false };
+  const folio = new URLSearchParams(location.search).get("folio");
+  if (CONFIG.ENDPOINT_SOLICITUD && folio){
+    const r = await fetch(CONFIG.ENDPOINT_SOLICITUD + "&folio=" + encodeURIComponent(folio));
+    if (!r.ok) throw new Error("No se pudo cargar la solicitud " + folio + " (HTTP " + r.status + ")");
+    return { s: await r.json(), demo:false };
+  }
+  return { s: SOLICITUD_DEMO, demo:true };
+}
+
+/* ---------- Estado ---------- */
+let SOL = null;
+// est[partida] = { ops:[{id, proveedor, precio, dias, lab}], elegida:id|null, manual:bool, nd:bool }
+const est = {};
+const memProv = {};     // memoria por proveedor: { NOMBRE: {nombre, dias, lab} }
+let sigOp = 1;
+const nuevaOp = (o={}) => ({ id: sigOp++, proveedor:"", precio:null, base:"u", dias:"", lab:"", disp:"", coment:"", ...o });
+const itDe = pt => SOL.partidas.find(x => x.partida === pt);
+// ¿Se puede capturar precio por kg? (unidad no es kg y hay peso unitario)
+const admiteKg = it => it.unidad !== "KILOGRAMO" && it.peso_unitario_kg > 0;
+// Precio por unidad de venta (pza, m…) ya convertido si Compras lo dio por kg
+const pu = (o, it) => !(o.precio > 0) ? null : (o.base === "kg" && admiteKg(it) ? o.precio * it.peso_unitario_kg : o.precio);
+// Cantidad que surte la opción: la disponible si se capturó (y es menor), si no la solicitada
+const cantOp = (o, it) => { const d = parseFloat(o.disp); return d >= 0 && o.disp !== "" && d < it.cantidad ? d : it.cantidad; };
+const esParcial = (o, it) => o.disp !== "" && parseFloat(o.disp) < it.cantidad;
+
+function opsValidas(pt){ return est[pt].ops.filter(o => o.precio > 0); }
+function mejorOp(pt){
+  const it = itDe(pt); let b = null; for (const o of opsValidas(pt)) if (!b || pu(o,it) < pu(b,it)) b = o; return b;
+}
+function opElegida(pt){
+  const e = est[pt]; if (e.nd) return null;
+  return e.ops.find(o => o.id === e.elegida && o.precio > 0) || null;
+}
+
+/* ---------- Dibujo ---------- */
+function dibujarTodo(){
+  $("materiales").innerHTML = SOL.partidas.map(it => `
+    <div class="mat" data-pt="${it.partida}">
+      <div class="mat-head">
+        <span class="n">${it.partida}</span>
+        <span class="cod ${it.en_catalogo ? "" : "sc"}">${it.en_catalogo ? esc(it.clave) : "S/C"}</span>
+        <span class="desc">${esc(it.articulo)}${it.especificacion ? " · " + esc(it.especificacion) : ""}
+          ${it.nota ? `<small>Nota: ${esc(it.nota)}</small>` : ""}</span>
+        <span class="cant"><b>${fmt(it.cantidad, Number.isInteger(it.cantidad)?0:2)} ${esc(umc(it.unidad))}</b>
+          <small>${it.kilos != null ? fmt(it.kilos) + " kg" : "sin peso"}</small></span>
+        <span class="res"><span class="res-txt"></span>
+          <label class="nd"><input type="checkbox" data-nd="${it.partida}" ${est[it.partida].nd?"checked":""}> No disponible</label></span>
+      </div>
+      <div class="ops"></div>
+    </div>`).join("");
+  SOL.partidas.forEach(it => dibujarOps(it.partida));
+  actualizar();
+}
+function dibujarOps(pt){
+  const it = SOL.partidas.find(x => x.partida === pt), e = est[pt];
+  const box = document.querySelector(`.mat[data-pt="${pt}"] .ops`);
+  box.innerHTML = `
+    ${e.ops.map((o,i) => `
+      <div class="op" data-op="${o.id}">
+        <input type="radio" name="el_${pt}" value="${o.id}" title="Sugerir esta opción al regional">
+        <input class="prov" data-f="proveedor" list="lstProv" value="${esc(o.proveedor)}" placeholder="Proveedor ${i+1}">
+        <span class="pcell">
+          <input class="precio" data-f="precio" type="number" min="0" step="any" inputmode="decimal" value="${o.precio ?? ""}" placeholder="$">
+          ${admiteKg(it) ? `<select data-f="base" title="¿El proveedor dio el precio por ${esc(umc(it.unidad))} o por kg?">
+              <option value="u" ${o.base!=="kg"?"selected":""}>/${esc(umc(it.unidad))}</option>
+              <option value="kg" ${o.base==="kg"?"selected":""}>/kg</option></select>`
+            : `<span class="pu-fijo">/${esc(umc(it.unidad))}</span>`}
+          <small class="conv"></small>
+        </span>
+        <input data-f="dias" type="number" min="0" step="1" inputmode="numeric" value="${esc(o.dias)}" placeholder="días háb." title="Tiempo de entrega en días hábiles">
+        <input class="disp" data-f="disp" type="number" min="0" step="any" inputmode="decimal" value="${esc(o.disp)}" placeholder="Todo" title="Cantidad disponible (vacío = completa)">
+        <input class="lab" data-f="lab" autocomplete="off" value="${esc(o.lab)}" placeholder="Escribe dónde">
+        <input class="coment" data-f="coment" value="${esc(o.coment)}" placeholder="Observaciones del proveedor">
+        <span class="imp"></span>
+        <span class="acc">
+          ${SOL.partidas.length > 1 ? `<button type="button" class="ico txt" data-copiar="${o.id}" title="Pone este mismo proveedor, con su tiempo de entrega y LAB, en todos los demás materiales. Solo faltará capturar el precio de cada uno.">En todos</button>` : ""}
+          ${e.ops.length > 1 ? `<button type="button" class="ico q" data-quitar="${o.id}" title="Quitar opción">✕</button>` : ""}
+        </span>
+      </div>`).join("")}
+    ${e.ops.length < CONFIG.MAX_OPCIONES ? `<button type="button" class="lnk add-op" data-add="${pt}">+ otro proveedor</button>` : ""}`;
+}
+function actualizar(){
+  for (const it of SOL.partidas){
+    const pt = it.partida, e = est[pt], m = mejorOp(pt);
+    if (!e.manual || !opElegida(pt)) { e.elegida = m ? m.id : null; e.manual = false; }
+    const card = document.querySelector(`.mat[data-pt="${pt}"]`);
+    card.classList.toggle("no-disp", e.nd);
+    card.querySelectorAll(".op").forEach(row => {
+      const o = e.ops.find(x => x.id === +row.dataset.op);
+      const rb = row.querySelector("input[type=radio]");
+      rb.checked = o.id === e.elegida; rb.disabled = !(o.precio > 0);
+      row.classList.toggle("mejor", !!m && o.id === m.id && opsValidas(pt).length > 1);
+      row.classList.toggle("elegida", o.id === e.elegida && !e.nd);
+      const par = esParcial(o, it);
+      row.classList.toggle("parcial", par);
+      row.querySelector(".conv").textContent = o.base === "kg" && admiteKg(it) && o.precio > 0
+        ? `= ${fmt$(pu(o,it))}/${umc(it.unidad)} (${fmt(it.peso_unitario_kg,3)} kg/${umc(it.unidad)})` : "";
+      row.querySelector(".imp").innerHTML = (o.id === e.elegida && !e.nd ? `<small class="sug">✓ Sugerido</small>` : "")
+        + (o.precio > 0 && m && o.id === m.id && opsValidas(pt).length > 1 ? `<small class="mp">Mejor precio</small>` : "")
+        + (par ? `<small class="parc" title="Surte ${fmt(cantOp(o,it),0)} de ${fmt(it.cantidad,0)} ${esc(umc(it.unidad))}">Parcial ${fmt(cantOp(o,it),0)}/${fmt(it.cantidad,0)}</small>` : "");
+    });
+    const r = card.querySelector(".res-txt"), el = opElegida(pt);
+    if (e.nd) r.innerHTML = `<b style="color:var(--rojo)">No disponible</b>`;
+    else if (el) r.innerHTML = `<small class="lbl-sug">Sugerido a regional</small><b>${fmt$(pu(el,it))} <small>/${esc(umc(it.unidad))}</small></b>
+      ${el.base === "kg" && admiteKg(it) ? `<small>(${fmt$(el.precio)}/kg)</small>` : ""}
+      <small>${esc(el.proveedor || "Sin nombre")}</small>
+      ${esParcial(el,it) ? `<small class="parc">⚠ Parcial: ${fmt(cantOp(el,it),0)} de ${fmt(it.cantidad,0)} ${esc(umc(it.unidad))}</small>` : ""}
+      ${el.coment ? `<small class="com">“${esc(el.coment)}”</small>` : ""}`;
+    else r.innerHTML = `<small style="color:var(--ambar)">Sin precio</small><br>`;
+  }
+  resumenProveedores();
+}
+function resumenProveedores(){}
+
+/* ---------- Eventos ---------- */
+// Al entrar a un campo autocompletado, seleccionar su contenido para que lo tecleado lo sustituya
+document.addEventListener("focusin", e => {
+  const el = e.target;
+  if (el.matches && el.matches('.op input[data-f="dias"]') && el.value){
+    el.select();
+    el.addEventListener("mouseup", ev => ev.preventDefault(), { once:true });   // que el clic no quite la selección
+  }
+});
+function opDe(el){
+  const row = el.closest(".op"), pt = +el.closest(".mat").dataset.pt;
+  return { pt, o: est[pt].ops.find(x => x.id === +row.dataset.op), row };
+}
+function recordarProveedor(o){
+  const k = clave(o.proveedor); if (!k) return;
+  memProv[k] = { nombre: o.proveedor.trim(), dias: o.dias, lab: o.lab };
+  actualizarListaProv();
+}
+function actualizarListaProv(){
+  const nombres = new Set([...CONFIG.PROVEEDORES_SUGERIDOS, ...Object.values(memProv).map(p => p.nombre)]);
+  $("lstProv").innerHTML = [...nombres].map(n => `<option value="${esc(n)}">`).join("");
+}
+document.addEventListener("input", e => {
+  const el = e.target;
+  if (el.dataset.f && el.closest(".op")){
+    const { o } = opDe(el), f = el.dataset.f;
+    if (f === "precio"){ const v = parseFloat(el.value); o.precio = v > 0 ? v : null; }
+    else if (f === "base"){ o.base = el.value; }
+    else o[f] = el.value;
+    if (f === "dias" || f === "lab") recordarProveedor(o);
+    actualizar();
+  }
+});
+document.addEventListener("change", e => {
+  const el = e.target;
+  if (el.dataset.f === "proveedor" && el.closest(".op")){
+    // proveedor conocido → rellenar T. entrega y LAB si están vacíos
+    const { o, row } = opDe(el), mem = memProv[clave(o.proveedor)];
+    if (mem){
+      if (o.dias === "" && mem.dias !== ""){ o.dias = mem.dias; row.querySelector('[data-f="dias"]').value = mem.dias; }
+    }
+    recordarProveedor(o); actualizar();
+  } else if (el.dataset.f === "base" && el.closest(".op")){
+    const { o } = opDe(el); o.base = el.value; actualizar();
+  } else if (el.type === "radio" && el.name.startsWith("el_")){
+    const pt = +el.name.slice(3); est[pt].elegida = +el.value; est[pt].manual = true; actualizar();
+  } else if (el.dataset.nd){
+    est[+el.dataset.nd].nd = el.checked; actualizar();
+  }
+});
+document.addEventListener("click", e => {
+  const add = e.target.closest("[data-add]"), q = e.target.closest("[data-quitar]"), cp = e.target.closest("[data-copiar]"),
+        ex = e.target.closest("[data-extra]");
+  if (ex){
+    const box = ex.closest(".op").querySelector(".op-extra"), abrir = box.style.display === "none";
+    box.style.display = abrir ? "grid" : "none"; ex.classList.toggle("on", abrir);
+    if (abrir) box.querySelector('[data-f="disp"]').focus();
+    return;
+  }
+  if (add){
+    const pt = +add.dataset.add; est[pt].ops.push(nuevaOp()); dibujarOps(pt); actualizar();
+    document.querySelector(`.mat[data-pt="${pt}"] .op:last-of-type .prov`).focus();
+  } else if (q){
+    const { pt } = opDe(q), e2 = est[pt];
+    e2.ops = e2.ops.filter(o => o.id !== +q.dataset.quitar);
+    if (!e2.ops.some(o => o.id === e2.elegida)) e2.manual = false;
+    dibujarOps(pt); actualizar();
+  } else if (cp){
+    const { pt, o } = opDe(cp);
+    if (!o.proveedor.trim()){ mostrar("err", "Escribe primero el nombre del proveedor para poder copiarlo."); return; }
+    let n = 0, llenos = 0;
+    for (const it of SOL.partidas){
+      if (it.partida === pt || est[it.partida].nd) continue;
+      const e2 = est[it.partida];
+      if (e2.ops.some(x => clave(x.proveedor) === clave(o.proveedor))) continue;
+      const vacia = e2.ops.find(x => !x.proveedor.trim() && !(x.precio > 0));
+      if (vacia) Object.assign(vacia, { proveedor:o.proveedor, dias:o.dias, lab:o.lab, base:o.base });
+      else if (e2.ops.length < CONFIG.MAX_OPCIONES) e2.ops.push(nuevaOp({ proveedor:o.proveedor, dias:o.dias, lab:o.lab, base:o.base }));
+      else { llenos++; continue; }
+      dibujarOps(it.partida); n++;
+    }
+    actualizar();
+    mostrar("ok", `Proveedor <b>${esc(o.proveedor)}</b> agregado a ${n} material${n===1?"":"es"}. Solo falta capturar el precio en cada uno.` +
+      (llenos ? `<br><small>${llenos} material(es) ya tenían ${CONFIG.MAX_OPCIONES} opciones.</small>` : ""));
+    setTimeout(() => { const m = $("msg"); if (m.classList.contains("ok") && $("contenido").style.display !== "none") m.className = "msg"; }, 4000);
+  }
+});
+
+/* ---------- Resumen de la solicitud ---------- */
+function direccionSucursal(nombre){
+  const k = clave(nombre);
+  for (const [n, d] of Object.entries(CONFIG.SUCURSALES_DIRECCIONES)) if (clave(n) === k) return d;
+  return "";
+}
+function textoEntrega(){
+  const e = SOL.entrega || {}, d = e.direccion || {};
+  if (e.tipo === "directa")
+    return { corto: `Directa · ${d.municipio}, ${d.estado}`, dir: d.cp ? "C.P. " + d.cp : "", maps: d.google_maps || "" };
+  const suc = e.sucursal_entrega || "";
+  const dir = e.direccion_sucursal || direccionSucursal(suc);
+  return { corto: `Suc. ${suc}`, dir, maps: "" };
+}
+function pintarResumen(){
+  const s = SOL, en = textoEntrega();
+  const fecha = s.fecha_solicitud ? s.fecha_solicitud.split("-").reverse().join("/") : "";
+  $("resumen").innerHTML = `
+    <div><i>Fecha</i><b>${esc(fecha)}</b> ${esc(s.hora_solicitud || "")}</div>
+    <div><i>Solicita</i><b>Suc. ${esc(s.usuario?.sucursal)}</b><small>${esc(s.usuario?.nombre)}</small></div>
+    <div><i>Cliente</i><b>${esc(s.cliente?.nombre)}</b><small>Clave ${esc(s.cliente?.clave)}</small></div>
+    <div><i>Vendedor</i><b>${esc(s.vendedor)}</b></div>
+    <div class="ent"><i>Entrega</i><b>${esc(en.corto)}</b><small>${en.dir ? esc(en.dir) : ""}${en.maps ? `${en.dir ? " · " : ""}<a href="${esc(en.maps)}" target="_blank" rel="noopener">Ver en Google Maps ↗</a>` : ""}</small></div>
+    <div><i>Peso total</i><b>${s.total_kilos != null ? fmt(s.total_kilos) + " kg" : "—"}</b>${s.partidas_sin_peso ? `<small>${s.partidas_sin_peso} sin peso</small>` : ""}</div>
+    ${s.observaciones ? `<div class="obs"><i>Observaciones de la sucursal</i>${esc(s.observaciones)}</div>` : ""}`;
+  $("hFolio").textContent = s.folio || "";
+}
+
+function mostrar(tipo, html){
+  const m = $("msg"); m.className = "msg " + tipo; m.innerHTML = html;
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+/* ---------- Resumen para el proveedor (mensaje simple de WhatsApp, sin datos confidenciales) ---------- */
+const rpIncluidos = {};   // partida → incluida en el mensaje
+function rpPintarSel(){
+  SOL.partidas.forEach(it => { if (rpIncluidos[it.partida] === undefined) rpIncluidos[it.partida] = true; });
+}
+function rpEntrega(){
+  const e = SOL.entrega || {}, d = e.direccion || {};
+  if (e.tipo === "directa") return `${d.municipio}, ${d.estado}${d.cp ? ", C.P. " + d.cp : ""}`;
+  if (e.sucursal_entrega){ const dir = e.direccion_sucursal || direccionSucursal(e.sucursal_entrega);
+    return `PYLSA Suc. ${e.sucursal_entrega}${dir ? ", " + dir : ""}`; }
+  return "";
+}
+const cantTxt = it => `${fmt(it.cantidad, Number.isInteger(it.cantidad)?0:2)} ${umc(it.unidad)}`;
+function lineaItem(it){
+  const kg = $("rpKg").checked && it.kilos != null && it.unidad !== "KILOGRAMO" ? ` (${fmt(it.kilos, 0)} kg)` : "";
+  const cod = $("rpCod").checked && it.en_catalogo ? `[${it.clave}] ` : "";
+  return `${cantTxt(it)} ${cod}${it.articulo}${it.especificacion ? " " + it.especificacion : ""}${kg}${it.nota ? " – " + it.nota : ""}`;
+}
+const RP_SALUDO = "Buen día, me apoyas con cotización de:";
+const RP_PIDE = "Precio, existencia, tiempo de entrega (días hábiles) y LAB. Gracias.";
+function rpPintar(){
+  const ent = $("rpEnt").checked ? rpEntrega() : "";
+  $("rpHoja").innerHTML = `
+    <p>${esc(RP_SALUDO)}</p>
+    <ul>${SOL.partidas.map(it => `
+      <li class="${rpIncluidos[it.partida] ? "" : "off"}"><input type="checkbox" data-rp="${it.partida}" ${rpIncluidos[it.partida] ? "checked" : ""} title="Incluir / quitar">
+        <span>• ${esc(lineaItem(it))}</span></li>`).join("")}</ul>
+    ${ent ? `<p>Entrega en ${esc(ent)}</p>` : ""}
+    <p>${esc(RP_PIDE)}</p>`;
+}
+function rpTexto(){
+  const items = SOL.partidas.filter(it => rpIncluidos[it.partida]);
+  const ent = $("rpEnt").checked ? rpEntrega() : "";
+  return [RP_SALUDO, "", ...items.map(it => "• " + lineaItem(it)), "", ...(ent ? ["Entrega en " + ent] : []),
+          RP_PIDE].join("\n");
+}
+async function copiar(txt){
+  try { await navigator.clipboard.writeText(txt); return true; }
+  catch(_){
+    const ta = document.createElement("textarea"); ta.value = txt; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select(); let ok = false; try { ok = document.execCommand("copy"); } catch(_){}
+    ta.remove(); return ok;
+  }
+}
+document.addEventListener("change", e => {
+  if (e.target.dataset.rp){ rpIncluidos[+e.target.dataset.rp] = e.target.checked; rpPintar(); }
+  else if (["rpCod","rpKg","rpEnt"].includes(e.target.id)) rpPintar();
+});
+$("rpCopiar").onclick = async () => {
+  if (!SOL.partidas.some(it => rpIncluidos[it.partida])){ $("rpOk").textContent = "Marca al menos un material."; return; }
+  const ok = await copiar(rpTexto());
+  $("rpOk").textContent = ok ? "✓ Copiado. Pégalo en WhatsApp o en el correo al proveedor." : "No se pudo copiar automáticamente; selecciona el texto del recuadro.";
+  setTimeout(() => $("rpOk").textContent = "", 5000);
+};
+
+/* ---------- Payload y envío ---------- */
+function hoyLocal(){ const d = new Date(), z = n => String(n).padStart(2,"0");
+  return { iso:`${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`, hora:`${z(d.getHours())}:${z(d.getMinutes())}` }; }
+
+function construirPayload(){
+  const partidas = SOL.partidas.map(it => {
+    const pt = it.partida, e = est[pt], el = opElegida(pt);
+    const opciones = e.ops.filter(o => o.precio > 0 || o.proveedor.trim()).map((o,i) => ({
+      opcion: i+1, proveedor: o.proveedor.trim(),
+      precio_capturado: o.precio, precio_capturado_por: o.base === "kg" && admiteKg(it) ? "kg" : it.unidad,
+      precio_unitario: pu(o, it) != null ? +pu(o, it).toFixed(4) : null,   // por unidad de venta
+      cantidad_disponible: cantOp(o, it), parcial: esParcial(o, it),
+      importe: o.precio > 0 ? +(pu(o, it) * cantOp(o, it)).toFixed(2) : null,
+      tiempo_entrega_dias: o.dias === "" ? null : +o.dias, lab: o.lab.trim(),
+      comentario: o.coment.trim(),
+      elegida: !!el && o.id === el.id
+    }));
+    return {
+      partida: pt, en_catalogo: it.en_catalogo, clave: it.clave, articulo: it.articulo, unidad: it.unidad,
+      cantidad: it.cantidad, kilos: it.kilos, no_disponible: e.nd,
+      opciones, total_opciones: opciones.filter(o => o.precio_unitario > 0).length,
+      proveedor_elegido: el ? el.proveedor.trim() : null,
+      eleccion: el ? (e.manual ? "manual" : "mejor_precio") : null,
+      costo_unitario: el ? +pu(el, it).toFixed(4) : null,
+      costo_por_kg: el ? (it.unidad === "KILOGRAMO" ? el.precio : (it.peso_unitario_kg > 0 ? +(pu(el,it) / it.peso_unitario_kg).toFixed(4) : null)) : null,
+      cantidad_surtida: el ? cantOp(el, it) : null,
+      surtido_parcial: el ? esParcial(el, it) : false,
+      costo_importe: el ? +(pu(el, it) * cantOp(el, it)).toFixed(2) : null,
+      comentario_proveedor: el ? el.coment.trim() : null,
+      tiempo_entrega_dias: el ? (el.dias === "" ? null : +el.dias) : null,
+      lab: el ? el.lab.trim() : null
+    };
+  });
+  const h = hoyLocal();
+  const resumen = {};
+  partidas.forEach(p => { if (!p.proveedor_elegido) return;
+    const r = resumen[p.proveedor_elegido] ||= { proveedor: p.proveedor_elegido, materiales:0, kilos:0, importe:0 };
+    r.materiales++; r.kilos += (p.kilos || 0) * (p.cantidad_surtida / p.cantidad); r.importe += p.costo_importe; });
+  return {
+    tipo_evento: "respuesta_compras",
+    folio: SOL.folio,
+    fecha_respuesta: h.iso, hora_respuesta: h.hora,
+    usuario: { id_usuario: USUARIO.id_usuario, nombre: USUARIO.nombre, puesto: USUARIO.puesto, correo: USUARIO.correo },
+    partidas,
+    resumen_proveedores: Object.values(resumen).map(r => ({ ...r, kilos:+r.kilos.toFixed(2), importe:+r.importe.toFixed(2) })),
+    total_costo_elegido: +partidas.reduce((t,p) => t + (p.costo_importe || 0), 0).toFixed(2),
+    partidas_no_disponibles: partidas.filter(p => p.no_disponible).length,
+    partidas_parciales: partidas.filter(p => p.surtido_parcial).length,
+    estado_sugerido: partidas.every(p => p.no_disponible) ? "No disponible" : "Costeada",
+    observaciones: $("obsCompras").value.trim(),
+    enviado_en: new Date().toISOString()
+  };
+}
+
+function validar(){
+  const err = [];
+  SOL.partidas.forEach(it => {
+    const pt = it.partida, e = est[pt];
+    if (e.nd) return;
+    const el = opElegida(pt);
+    if (!el){ err.push(`Material ${pt}: captura al menos un precio o márcalo como "No disponible".`); return; }
+    e.ops.forEach((o,i) => { if (o.precio > 0 && !o.proveedor.trim()) err.push(`Material ${pt}, opción ${i+1}: escribe el proveedor.`); });
+    if (el.dias === "") err.push(`Material ${pt}: indica el tiempo de entrega (días hábiles) de la opción elegida.`);
+    if (!el.lab.trim()) err.push(`Material ${pt}: indica dónde es LAB en la opción elegida.`);
+  });
+  return err;
+}
+
+$("enviar").onclick = async () => {
+  const err = validar();
+  if (err.length){ mostrar("err", "<b>Revisa lo siguiente:</b><br>" + err.join("<br>")); return; }
+  const payload = construirPayload();
+  if (MODO_DEMO){
+    $("contenido").style.display = "none";
+    mostrar("ok", `✅ (Demo) La cotización se habría enviado al regional así:<pre>${esc(JSON.stringify(payload, null, 2))}</pre>
+      <p><a href="${location.pathname}${location.search}">Volver a empezar</a></p>`);
+    return;
+  }
+  const btn = $("enviar"); btn.disabled = true; btn.textContent = "Enviando…";
+  try{
+    const r = await fetch(CONFIG.ENDPOINT_RESPUESTA, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    $("contenido").style.display = "none";
+    mostrar("ok", `✅ Cotización <b>${esc(SOL.folio)}</b> enviada al regional para poner precio de venta.`);
+  }catch(e){
+    mostrar("err", "No se pudo enviar. Inténtalo de nuevo.<br><small>" + esc(e.message) + "</small>");
+  }finally{ btn.disabled = false; btn.textContent = "Enviar cotización al regional"; }
+};
+
+/* ---------- Arranque ---------- */
+let MODO_DEMO = true;
+(async () => {
+  $("barraUsuario").innerHTML = `<span>Compras: <b>${esc(USUARIO.nombre)}</b></span><span>Puesto: <b>${esc(USUARIO.puesto)}</b></span>`;
+  document.body.insertAdjacentHTML("beforeend",
+    `<datalist id="lstProv"></datalist>`);
+  try{
+    const { s, demo } = await obtenerSolicitud();
+    SOL = s;
+    MODO_DEMO = demo || !usuarioReal || !CONFIG.ENDPOINT_RESPUESTA;
+    if (MODO_DEMO){
+      const motivos = [];
+      if (demo) motivos.push("solicitud de ejemplo");
+      if (!usuarioReal) motivos.push("sin sesión de usuario");
+      if (!CONFIG.ENDPOINT_RESPUESTA) motivos.push("sin endpoint de respuesta");
+      $("avisoDemo").style.display = "block";
+      $("avisoDemo").textContent = "Modo demo (" + motivos.join(", ") + "). No se enviará nada; se mostrarán los datos que se mandarían.";
+    }
+    pintarResumen();
+    SOL.partidas.forEach(it => est[it.partida] = { ops:[nuevaOp()], elegida:null, manual:false, nd:false });
+    actualizarListaProv();
+    dibujarTodo();
+    rpPintarSel(); rpPintar();
+  }catch(e){
+    $("contenido").style.display = "none";
+    mostrar("err", esc(e.message));
+  }
+})();
+</script>
+</body>
+</html>

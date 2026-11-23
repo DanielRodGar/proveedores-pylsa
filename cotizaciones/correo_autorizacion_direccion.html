@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autorizar compra {{folio}}</title>
+<!--
+=====================================================================
+  PYLSA · CORREO A DIRECCIÓN · AUTORIZACIÓN DE COMPRA (el cliente ya pagó)
+=====================================================================
+  Se envía a DIRECCIÓN cuando la sucursal envía venta_cotizacion.html.
+  Dirección autoriza o rechaza con los botones; al autorizar, a Compras le
+  llega correo_solicitud_compra.html con "Autorizado por …". Plantilla de correo HTML (compatible con
+  Gmail / Outlook: tablas y estilos en línea, sin JavaScript).
+
+  ASUNTO sugerido:
+    AUTORIZAR COMPRA · {{folio}} · Suc. {{sucursal}}
+
+  ADJUNTOS DEL CORREO (los archivos que subió la sucursal):
+    - Comprobante de pago
+    - Cotización que pagó el cliente
+
+  Aquí SÍ van los nombres reales de proveedor (es para Compras), con TODAS
+  las opciones que cotizó, y la línea de autorización: costo, precio de
+  venta y utilidad.
+
+  CONTENIDO (a petición de dirección): quién solicita, el cliente, la tabla
+  "Utilidad por producto" (una línea por artículo, sin totales), los datos
+  de entrega y los botones. El detalle de opciones de proveedor lo ve Compras
+  en correo_solicitud_compra.html.
+
+  ADJUNTOS DEL CORREO (los archivos que subió la sucursal):
+    - Comprobante de pago
+    - Cotización que pagó el cliente
+
+  MARCADORES a sustituir por el sistema:
+    {{folio}} {{sucursal}} {{solicitante}} {{fecha_pago}} {{hora_pago}}
+    {{cliente_nombre}} {{cliente_clave}} {{vendedor}}
+    TABLA "UTILIDAD POR PRODUCTO": repetir el bloque entre
+    "INICIO UTILIDAD" y "FIN UTILIDAD" por producto, con
+    {{u_codigo}} {{u_descripcion}} {{u_proveedor}} {{u_cantidad}} {{u_costo}}
+    {{u_precio}} {{u_utilidad}} {{u_pct}} {{u_total}}
+    (% de utilidad SOBRE VENTA: (precio − costo) ÷ precio)
+    ENTREGA: {{entrega_tipo}} {{entrega_lugar}} {{entrega_ref}} {{url_maps}}
+             {{recibe_nombre}} {{recibe_tel}} {{descarga_dias}} {{descarga_horario}} {{descarga_ind}}
+    {{adjuntos}} → nombres de archivo, ej. "comprobante.pdf · cotizacion.pdf"
+    {{url_autorizar}} → autorizacion_compra.html?folio={{folio}}&accion=autorizar
+    {{url_ajuste}}    → autorizacion_compra.html?folio={{folio}}&accion=ajuste
+    {{url_rechazar}}  → autorizacion_compra.html?folio={{folio}}&accion=rechazar
+=====================================================================
+-->
+</head>
+<body style="margin:0;padding:0;background:#f3f5f8;font-family:Arial,Helvetica,sans-serif;color:#1d2733;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f5f8;">
+<tr><td align="center" style="padding:20px 10px;">
+
+  <table role="presentation" width="680" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:680px;background:#ffffff;border:1px solid #d5dbe3;border-radius:8px;">
+
+    <!-- ENCABEZADO -->
+    <tr>
+      <td style="background:#b9770e;padding:14px 20px;border-radius:8px 8px 0 0;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="color:#ffffff;font-size:17px;font-weight:bold;">Autorización de compra<br><span style="font-size:12px;font-weight:normal;">El cliente ya pagó · pendiente de dirección</span></td>
+            <td align="right" style="color:#ffffff;font-size:18px;font-weight:bold;">{{folio}}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- DATOS -->
+    <tr>
+      <td style="padding:16px 20px 4px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:14px;line-height:1.4;">
+          <tr>
+            <td width="50%" valign="top" style="padding:0 10px 10px 0;">
+              <div style="font-size:10px;font-weight:bold;color:#5d6b7a;text-transform:uppercase;">Solicita</div>
+              <b>Suc. {{sucursal}}</b><br><span style="font-size:12px;color:#5d6b7a;">{{solicitante}} · {{fecha_pago}} {{hora_pago}}</span>
+            </td>
+            <td width="50%" valign="top" style="padding:0 0 10px;">
+              <div style="font-size:10px;font-weight:bold;color:#5d6b7a;text-transform:uppercase;">Cliente</div>
+              <b>{{cliente_nombre}}</b><br><span style="font-size:12px;color:#5d6b7a;">Clave {{cliente_clave}} · Vendedor {{vendedor}}</span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- UTILIDAD POR PRODUCTO -->
+    <tr>
+      <td style="padding:0 20px 10px;">
+        <div style="font-size:13px;font-weight:bold;color:#1f3a5f;margin-bottom:6px;">Utilidad por producto</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size:12px;border-collapse:collapse;">
+          <tr style="background:#eef2f7;">
+            <th align="left"  style="padding:6px 5px;font-size:9.5px;color:#5d6b7a;text-transform:uppercase;">Producto</th>
+            <th align="right" style="padding:6px 5px;font-size:9.5px;color:#5d6b7a;text-transform:uppercase;">Cantidad</th>
+            <th align="right" style="padding:6px 5px;font-size:9.5px;color:#5d6b7a;text-transform:uppercase;">Costo</th>
+            <th align="right" style="padding:6px 5px;font-size:9.5px;color:#5d6b7a;text-transform:uppercase;">Precio venta</th>
+            <th align="right" style="padding:6px 5px;font-size:9.5px;color:#5d6b7a;text-transform:uppercase;">Utilidad unit.</th>
+            <th align="right" style="padding:6px 5px;font-size:9.5px;color:#5d6b7a;text-transform:uppercase;">%</th>
+            <th align="right" style="padding:6px 5px;font-size:9.5px;color:#5d6b7a;text-transform:uppercase;">Utilidad total</th>
+          </tr>
+          <!-- INICIO UTILIDAD -->
+          <tr>
+            <td style="padding:7px 5px;border-bottom:1px solid #e6eaf0;"><b style="color:#c0392b;">{{u_codigo}}</b> {{u_descripcion}}<br><span style="font-size:10.5px;color:#5d6b7a;">{{u_proveedor}}</span></td>
+            <td align="right" style="padding:7px 5px;border-bottom:1px solid #e6eaf0;white-space:nowrap;font-weight:bold;">{{u_cantidad}}</td>
+            <td align="right" style="padding:7px 5px;border-bottom:1px solid #e6eaf0;white-space:nowrap;">{{u_costo}}</td>
+            <td align="right" style="padding:7px 5px;border-bottom:1px solid #e6eaf0;white-space:nowrap;">{{u_precio}}</td>
+            <td align="right" style="padding:7px 5px;border-bottom:1px solid #e6eaf0;white-space:nowrap;color:#1e8449;font-weight:bold;">{{u_utilidad}}</td>
+            <td align="right" style="padding:7px 5px;border-bottom:1px solid #e6eaf0;white-space:nowrap;color:#1e8449;font-weight:bold;">{{u_pct}}</td>
+            <td align="right" style="padding:7px 5px;border-bottom:1px solid #e6eaf0;white-space:nowrap;color:#1e8449;font-weight:bold;">{{u_total}}</td>
+          </tr>
+          <!-- FIN UTILIDAD -->
+        </table>
+      </td>
+    </tr>
+    <!-- ENTREGA -->
+    <tr>
+      <td style="padding:0 20px 12px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f3f5f8;border-radius:6px;font-size:13px;line-height:1.45;">
+          <tr>
+            <td valign="top" width="55%" style="padding:10px 12px;">
+              <div style="font-size:10px;font-weight:bold;color:#5d6b7a;text-transform:uppercase;">{{entrega_tipo}}</div>
+              <b>{{entrega_lugar}}</b><br>
+              <span style="font-size:12px;color:#5d6b7a;">{{entrega_ref}}</span><br>
+              <a href="{{url_maps}}" target="_blank" style="color:#2d5687;font-size:12px;">Ver ubicación en Google Maps</a>
+            </td>
+            <td valign="top" width="45%" style="padding:10px 12px;border-left:1px solid #d5dbe3;">
+              <div style="font-size:10px;font-weight:bold;color:#5d6b7a;text-transform:uppercase;">Recibe</div>
+              <b>{{recibe_nombre}}</b><br>Tel. {{recibe_tel}}
+              <div style="font-size:10px;font-weight:bold;color:#5d6b7a;text-transform:uppercase;margin-top:8px;">Descarga</div>
+              {{descarga_dias}} · {{descarga_horario}}<br>
+              <span style="font-size:12px;color:#5d6b7a;">{{descarga_ind}}</span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- ADJUNTOS -->
+    <tr>
+      <td style="padding:0 20px 14px;">
+        <div style="font-size:12px;color:#1d2733;background:#e9f7ef;border:1px solid #b8e0c6;border-radius:6px;padding:8px 10px;">
+          &#128206; <b>Adjuntos en este correo:</b> comprobante de pago y cotización pagada por el cliente<br>
+          <span style="color:#5d6b7a;">{{adjuntos}}</span>
+        </div>
+      </td>
+    </tr>
+
+    <!-- BOTONES (arriba) -->
+    <tr>
+      <td align="center" style="padding:2px 20px 16px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td align="center" bgcolor="#1e8449" style="border-radius:7px;">
+              <a href="{{url_autorizar}}" target="_blank" style="display:inline-block;padding:13px 22px;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:7px;">&#10004; Autorizar compra</a>
+            </td>
+            <td width="10" style="font-size:0;line-height:0;">&nbsp;</td>
+            <td align="center" bgcolor="#f5b700" style="border-radius:7px;">
+              <a href="{{url_ajuste}}" target="_blank" style="display:inline-block;padding:13px 22px;font-size:16px;font-weight:bold;color:#3b2f00;text-decoration:none;border-radius:7px;">&#9998; Solicitar ajuste</a>
+            </td>
+            <td width="10" style="font-size:0;line-height:0;">&nbsp;</td>
+            <td align="center" bgcolor="#c0392b" style="border-radius:7px;">
+              <a href="{{url_rechazar}}" target="_blank" style="display:inline-block;padding:13px 22px;font-size:16px;font-weight:bold;color:#ffffff;text-decoration:none;border-radius:7px;">&#10006; Rechazar</a>
+            </td>
+          </tr>
+        </table>
+        <div style="font-size:11px;color:#5d6b7a;margin-top:8px;">Al autorizar, Compras recibe la solicitud con tu nombre como autorizador. "Solicitar ajuste" la regresa con tus indicaciones (por ejemplo, revisar precio o proveedor).</div>
+      </td>
+    </tr>
+
+    <!-- PIE -->
+    <tr>
+      <td style="padding:10px 20px;border-top:1px solid #e6eaf0;font-size:11px;color:#5d6b7a;">
+        Correo automático del proceso de cotizaciones PYLSA · solicitud {{folio}}.
+      </td>
+    </tr>
+
+  </table>
+
+</td></tr>
+</table>
+</body>
+</html>

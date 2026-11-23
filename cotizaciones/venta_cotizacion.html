@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solicitud de compra · PYLSA</title>
+<!--
+=====================================================================
+  PYLSA · PROCESO DE COTIZACIÓN · PASO 5A: SOLICITUD DE COMPRA (SUCURSAL)
+=====================================================================
+  Cuando el cliente paga, la sucursal registra la venta y SOLICITA LA
+  COMPRA a Compras (con comprobante de pago, cotización pagada y datos
+  de entrega completos). Si el cliente NO compra se usa otra pantalla:
+  motivo_no_compra.html
+
+  NOTAS PARA INTEGRACIÓN:
+
+  1) USUARIO LOGUEADO (Sucursal)
+     window.PYLSA_USUARIO o sessionStorage / localStorage "pylsa_usuario".
+
+  1b) DOS FORMAS DE ENTRAR
+     a) Botón verde del correo "Solicitar compra": venta_cotizacion.html?folio=XXXX
+        → abre directo con toda la información.
+     b) Desde el PORTAL: venta_cotizacion.html (sin folio) → pide el folio y,
+        al continuar, carga la misma información (CONFIG.ENDPOINT_DATOS?folio=).
+        Si el folio no existe, el endpoint debe responder 404 y se muestra el error.
+
+  2) DATOS DE LA COTIZACIÓN
+     Necesita la solicitud (paso 1) y los precios del regional (paso 3):
+       { "solicitud": {...}, "precios": {...} }
+     Ver obtenerDatos(). Busca, en orden:
+       a) window.PYLSA_VENTA (objeto inyectado por el sistema)
+       b) CONFIG.ENDPOINT_DATOS + "?folio=XXXX" (GET → JSON),
+          con el folio de la URL: venta_cotizacion.html?folio=COT-000123
+     Si no hay ninguno → datos de ejemplo (MODO DEMO).
+     NO enviar costos ni proveedores a esta página: la utilidad la
+     calcula el backend con el costo de Compras.
+
+  3) ENVÍO  (multipart/form-data, por los archivos adjuntos)
+     CONFIG.ENDPOINT_RESPUESTA recibe un POST con:
+       - "datos"               → JSON (ver construirPayload())
+       - "comprobante_pago"    → uno o varios archivos (PDF / JPG / PNG)
+       - "cotizacion_cliente"  → uno o varios archivos (PDF / JPG / PNG)
+     Vacío → MODO DEMO (muestra el JSON y los nombres de archivo).
+     Estado "Vendida · pendiente de autorización" + enviar a DIRECCIÓN el correo
+     correo_autorizacion_direccion.html (todas las opciones de proveedor, costo,
+     precio de venta y utilidad, con los botones Autorizar / Rechazar →
+     autorizacion_compra.html). Al autorizar, a Compras le llega
+     correo_solicitud_compra.html con "Autorizado por …" y los dos archivos ADJUNTOS.
+=====================================================================
+-->
+<style>
+  :root{
+    --azul:#1f3a5f; --azul2:#2d5687; --gris:#f3f5f8; --borde:#d5dbe3;
+    --texto:#1d2733; --suave:#5d6b7a; --rojo:#c0392b; --verde:#1e8449; --ambar:#b9770e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--gris);color:var(--texto)}
+  header{background:var(--azul);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+  header h1{margin:0;font-size:19px}
+  header .folio{font-size:20px;font-weight:800;letter-spacing:.5px}
+  .usuario{background:var(--azul2);color:#fff;padding:8px 18px;font-size:13px;display:flex;flex-wrap:wrap;gap:6px 18px}
+  .demo{background:#fff4e0;color:var(--ambar);border-bottom:1px solid #f0d9a8;padding:8px 18px;font-size:13px}
+  main{max-width:1000px;margin:0 auto;padding:14px}
+  .card{background:#fff;border:1px solid var(--borde);border-radius:10px;padding:14px 16px;margin-bottom:12px}
+  .card h2{margin:0 0 10px;font-size:15px;color:var(--azul)}
+  label{display:block;font-size:12px;font-weight:600;margin-bottom:3px}
+  .req{color:var(--rojo)}
+  input,select,textarea{width:100%;padding:8px 9px;border:1px solid var(--borde);border-radius:6px;font-size:14px;font-family:inherit;background:#fff}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--azul2);border-color:var(--azul2)}
+  textarea{resize:vertical;min-height:50px}
+  .hint{font-size:12px;color:var(--suave)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+  .span{grid-column:1/-1}
+
+  /* ---- Resumen ---- */
+  .sol{display:grid;grid-template-columns:repeat(5,auto);justify-content:space-between;gap:10px 22px;background:#fff;border:1px solid var(--borde);border-left:4px solid var(--azul2);border-radius:8px;padding:12px 16px;margin-bottom:12px;font-size:14px;line-height:1.35}
+  .sol i{display:block;font-style:normal;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--suave);margin-bottom:2px}
+  .sol b{font-size:15px}
+  .sol small{display:block;font-size:12px;color:var(--suave)}
+  .sol .obs{grid-column:1/-1;font-size:13px;background:var(--gris);border-radius:6px;padding:6px 10px}
+  @media(max-width:800px){.sol{grid-template-columns:1fr 1fr}}
+
+  /* ---- Resultado ---- */
+  .resultado{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .resultado label{display:flex;gap:10px;align-items:center;border:2px solid var(--borde);border-radius:9px;padding:12px 14px;cursor:pointer;margin:0;font-size:15px}
+  .resultado label small{display:block;font-weight:400;color:var(--suave);font-size:12px}
+  .resultado input{width:auto;transform:scale(1.2)}
+  .resultado label:has(input[value=vendida]:checked){border-color:var(--verde);background:#e9f7ef}
+  .resultado label:has(input[value=no_compro]:checked){border-color:var(--rojo);background:#fdecea}
+
+  /* ---- Partidas ---- */
+  .thead,.pt{display:grid;grid-template-columns:28px 60px 1fr 110px 130px;gap:8px;align-items:center}
+  .thead{font-size:10px;font-weight:700;text-transform:uppercase;color:var(--suave);border-bottom:2px solid var(--borde);padding:0 0 5px}
+  .thead .r{text-align:right}
+  .pt{border-bottom:1px solid #e8ecf1;padding:6px 0;font-size:13px}
+  .pt input[type=checkbox]{width:auto;transform:scale(1.15);margin:0 auto;cursor:pointer}
+  .pt .cod{font-weight:700;color:var(--rojo)}
+  .pt .cod.sc{color:var(--ambar)}
+  .pt .desc small{display:block;color:var(--suave);font-size:11px}
+  .pt input[type=number]{text-align:right;padding:6px 7px;font-size:13px}
+  .pt .uw{display:flex;align-items:center;gap:4px}
+  .pt .uw span{font-size:11px;color:var(--suave);white-space:nowrap}
+  .pt.off{opacity:.4}
+  .pt.nd{opacity:.5}
+  .pt .ndtxt{grid-column:4/-1;color:var(--rojo);font-size:12px;font-weight:600;text-align:right}
+  .pt .cambio{display:block;font-size:10px;color:var(--ambar);font-weight:700;text-align:right}
+
+  /* ---- Entrega ---- */
+  .tipo-ent{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+  .tipo-ent label{display:flex;gap:7px;align-items:center;border:1px solid var(--borde);border-radius:8px;padding:9px 12px;cursor:pointer;margin:0;font-weight:500;font-size:14px}
+  .tipo-ent label:has(input:checked){border-color:var(--azul2);background:#eaf1fa}
+  .tipo-ent input{width:auto}
+  .dias{display:flex;flex-wrap:wrap;gap:5px}
+  .dias label{display:flex;align-items:center;justify-content:center;width:42px;height:34px;border:1px solid var(--borde);border-radius:6px;cursor:pointer;margin:0;font-size:13px;font-weight:600;user-select:none}
+  .dias input{display:none}
+  .dias label:has(input:checked){background:var(--azul2);color:#fff;border-color:var(--azul2)}
+  .horas{display:flex;align-items:center;gap:6px}
+  .horas input{width:auto;flex:1}
+
+  /* ---- Adjuntos ---- */
+  .adj{border:2px dashed var(--borde);border-radius:9px;padding:12px;text-align:center;cursor:pointer;transition:.15s}
+  .adj:hover,.adj.drag{border-color:var(--azul2);background:#f5f9fd}
+  .adj.ok{border-style:solid;border-color:var(--verde);background:#f3fbf6}
+  .adj b{display:block;font-size:14px}
+  .adj input{display:none}
+  .adj .files{font-size:12px;color:var(--verde);margin-top:4px;word-break:break-all}
+
+  .btn{border:none;border-radius:8px;padding:12px 16px;font-size:16px;font-weight:600;cursor:pointer;width:100%}
+  .btn-pri{background:var(--azul);color:#fff;padding:14px}
+  .btn-pri.rojo{background:var(--rojo)}
+  .btn-pri:disabled{opacity:.6;cursor:wait}
+  .msg{padding:14px;border-radius:8px;margin-bottom:14px;display:none}
+  .msg.ok{display:block;background:#e9f7ef;border:1px solid var(--verde);color:var(--verde)}
+  .msg.err{display:block;background:#fdecea;border:1px solid var(--rojo);color:var(--rojo)}
+  pre{background:#1d2733;color:#d6e2f0;padding:12px;border-radius:8px;font-size:12px;overflow:auto;max-height:360px}
+  .oculto{display:none}
+  .folio-in{display:flex;gap:8px}
+  .folio-in input{font-size:16px;text-transform:uppercase}
+  .folio-in .btn{width:auto;white-space:nowrap}
+
+  @media(max-width:700px){
+    .grid,.resultado{grid-template-columns:1fr}
+    .thead{display:none}
+    .pt{grid-template-columns:26px 1fr 1fr;row-gap:5px}
+    .pt .desc{grid-column:2/-1}
+    .pt .cod{grid-column:2/-1}
+    .pt .ndtxt{grid-column:2/-1;text-align:left}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Solicitud de compra · el cliente pagó</h1>
+  <span class="folio" id="hFolio"></span>
+</header>
+<div id="barraUsuario" class="usuario"></div>
+<div id="avisoDemo" class="demo" style="display:none"></div>
+
+<main>
+  <div id="msg" class="msg"></div>
+
+  <!-- ======== INICIO desde el portal: solo folio ======== -->
+  <div id="inicio" class="oculto">
+    <div class="card">
+      <h2>Folio de la solicitud de cotización a Compras</h2>
+      <p class="hint" style="margin:-4px 0 10px">Es el folio <b>COT-…</b> que se generó al pedir la cotización a Compras (aparece en los correos del proceso). No es el folio de la cotización que se le dio al cliente.</p>
+      <div class="folio-in">
+        <input id="inFolio" placeholder="Ej. COT-000123" autocomplete="off">
+        <button type="button" class="btn btn-pri" id="btnFolio">Continuar →</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="contenido" class="oculto">
+    <div class="sol" id="resumen"></div>
+
+    <!-- ======== VENDIDA ======== -->
+    <div id="secVenta">
+      <div class="card">
+        <h2>1. Materiales que pagó el cliente</h2>
+        <p class="hint" style="margin:-4px 0 8px">Desmarca lo que no compró. Ajusta cantidad o precio si cambió respecto a lo autorizado por el regional. Precios sin IVA.</p>
+        <div class="thead"><span></span><span>Código</span><span>Descripción</span><span class="r">Cantidad</span><span class="r">Precio venta</span></div>
+        <div id="partidas"></div>
+      </div>
+
+      <div class="card">
+        <h2>2. Comprobantes</h2>
+        <div class="grid">
+          <div>
+            <label>Comprobante de pago <span class="req">*</span></label>
+            <div class="adj" data-adj="comprobante_pago">
+              <b>📎 Adjuntar comprobante de pago</b>
+              <span class="hint">PDF, JPG o PNG · máx. 10 MB c/u</span>
+              <input type="file" id="fPago" accept=".pdf,.jpg,.jpeg,.png" multiple>
+              <div class="files"></div>
+            </div>
+          </div>
+          <div>
+            <label>Cotización que pagó el cliente <span class="req">*</span></label>
+            <div class="adj" data-adj="cotizacion_cliente">
+              <b>📎 Adjuntar cotización</b>
+              <span class="hint">PDF, JPG o PNG · máx. 10 MB c/u</span>
+              <input type="file" id="fCot" accept=".pdf,.jpg,.jpeg,.png" multiple>
+              <div class="files"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>3. Entrega</h2>
+        <div class="tipo-ent">
+          <label><input type="radio" name="tipoEnt" value="directa"> Entrega directa en dirección del cliente</label>
+          <label><input type="radio" name="tipoEnt" value="sucursal"> Entrega en sucursal</label>
+        </div>
+
+        <div id="boxSucursal" class="oculto">
+          <div class="grid">
+            <div>
+              <label>Sucursal <span class="req">*</span></label>
+              <input id="entSucursal" list="lstSuc" placeholder="Sucursal donde se entrega">
+              <datalist id="lstSuc"></datalist>
+            </div>
+          </div>
+        </div>
+
+        <div id="boxDirecta" class="oculto">
+          <div class="grid">
+            <div class="span">
+              <label>Calle y número <span class="req">*</span></label>
+              <input id="dCalle" placeholder="Ej. Av. Independencia 1250, bodega 3">
+            </div>
+            <div><label>Colonia <span class="req">*</span></label><input id="dColonia"></div>
+            <div><label>Código postal <span class="req">*</span></label><input id="dCp" inputmode="numeric" placeholder="5 dígitos"></div>
+            <div><label>Municipio / Ciudad <span class="req">*</span></label><input id="dMunicipio"></div>
+            <div><label>Estado <span class="req">*</span></label>
+              <select id="dEstado"><option>Veracruz</option><option>Oaxaca</option><option>Tabasco</option><option>Chiapas</option><option>Puebla</option><option>Campeche</option><option>Yucatán</option><option>Quintana Roo</option><option>Otro</option></select></div>
+            <div class="span"><label>Ubicación en Google Maps <span class="req">*</span></label><input id="dMaps" type="url" inputmode="url" placeholder="Pega aquí el enlace"></div>
+            <div class="span"><label>Referencias</label><input id="dRef" placeholder="Entre calles, color de fachada, portón…"></div>
+          </div>
+        </div>
+
+        <div id="boxRecibe" class="oculto" style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--borde)">
+          <div class="grid">
+            <div><label>Nombre de quien recibe <span class="req">*</span></label><input id="rNombre"></div>
+            <div><label>Teléfono de quien recibe <span class="req">*</span></label><input id="rTel" inputmode="tel" placeholder="10 dígitos"></div>
+            <div class="span">
+              <label>Días de descarga <span class="req">*</span></label>
+              <div class="dias" id="dias"></div>
+            </div>
+            <div class="span">
+              <label>Horario de descarga <span class="req">*</span></label>
+              <div class="horas"><input type="time" id="hDesde" value="08:00"> a <input type="time" id="hHasta" value="17:00"></div>
+            </div>
+            <div class="span"><label>Indicaciones de descarga</label>
+              <input id="indicaciones" placeholder="Ej. Se requiere grúa, acceso solo camioneta, no entra tráiler, comer de 14 a 15 h…"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>4. Observaciones para Compras</h2>
+        <textarea id="obsVenta" placeholder="Cualquier indicación adicional para la compra"></textarea>
+      </div>
+
+      <button type="button" class="btn btn-pri" id="enviarVenta">Solicitar compra a Compras</button>
+    </div>
+
+  </div>
+</main>
+
+<script>
+/* ⚠ MODO PRUEBAS: usuario fijo mientras no hay login del portal. Quitar este bloque en producción. */
+window.PYLSA_USUARIO = window.PYLSA_USUARIO || { id_usuario:"prueba-suc", nombre:"Daniel Rodríguez (prueba sucursal)", sucursal:"Tuxtepec 1", id_sucursal:"TUX1", puesto:"Vendedor", correo:"danielrodgar54@gmail.com" };
+</script>
+<script>
+/* ===================== CONFIGURACIÓN ===================== */
+const CONFIG = {
+  ENDPOINT_DATOS: "https://danielrodriguez.app.n8n.cloud/webhook/cot-datos?vista=venta",       // GET ?folio=... → { solicitud, precios }
+  ENDPOINT_RESPUESTA: "https://danielrodriguez.app.n8n.cloud/webhook/cot-evento",   // POST multipart (datos + archivos)
+  MAX_MB: 10,
+  SUCURSALES: ["Tuxtepec 1","Tuxtepec 2","Cosamaloapan","Tierra Blanca","Xalapa","Poza Rica",
+               "Cardel","Golfo","Centro","Tejería","Sur","Acerofertas","Palenque","Huimanguillo"]
+};
+/* ========================================================= */
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = (n, d=2) => (+n).toLocaleString("es-MX", {minimumFractionDigits:d, maximumFractionDigits:d});
+const fmt$ = n => "$" + fmt(n);
+const UM_CORTA = {PIEZA:"pza", KILOGRAMO:"kg", METRO:"m", "METRO LINEAL":"ml", "METRO CUADRADO":"m²"};
+const umc = u => UM_CORTA[u] || String(u||"").toLowerCase();
+
+/* ---------- Usuario ---------- */
+function obtenerUsuario(){
+  if (window.PYLSA_USUARIO) return window.PYLSA_USUARIO;
+  for (const st of [sessionStorage, localStorage]) {
+    try { const v = st.getItem("pylsa_usuario"); if (v) return JSON.parse(v); } catch(_){}
+  }
+  return null;
+}
+const usuarioReal = obtenerUsuario();
+const USUARIO = usuarioReal || { id_usuario:"demo", nombre:"Juan Pérez", puesto:"Vendedor", sucursal:"Tuxtepec 1", correo:"juan@pylsa.com" };
+
+/* ---------- Datos de ejemplo ---------- */
+const DEMO = {
+  solicitud: {
+    folio:"COT-DEMO", fecha_solicitud:"2026-11-19",
+    usuario:{ nombre:"Juan Pérez", sucursal:"Tuxtepec 1" },
+    cliente:{ clave:"004512", nombre:"Constructora del Golfo" }, vendedor:"Juan Pérez",
+    entrega:{ tipo:"directa", sucursal_entrega:"", direccion:{ municipio:"Boca del Río", estado:"Veracruz", cp:"94290", google_maps:"https://maps.app.goo.gl/ejemplo" } }
+  },
+  precios: {
+    folio:"COT-DEMO", fecha_precio:"2026-11-19", usuario:{ nombre:"Óscar Méndez" },
+    observaciones:"Precio válido hasta el viernes.",
+    partidas:[
+      { partida:1, clave:"001937", articulo:"PTR 3 X 3 C-3/16 A 6.10 MTS (PZ)", unidad:"PIEZA", cantidad:372, no_disponible:false, precio_venta_unitario:1610, tiempo_entrega_dias:3, cantidad_disponible:372, parcial:false },
+      { partida:2, clave:"001938", articulo:"PTR 4 X 4 C-3/16 A 6.10 MTS (PZ)", unidad:"PIEZA", cantidad:171, no_disponible:false, precio_venta_unitario:2300, tiempo_entrega_dias:3, cantidad_disponible:171, parcial:false },
+      { partida:3, clave:"002966", articulo:"VIGA I.P.R. 6 X 4 EN (13.3 KG/MT) DE 9LBS \"L\"", unidad:"KILOGRAMO", cantidad:350, no_disponible:false, precio_venta_unitario:28.5, tiempo_entrega_dias:1, cantidad_disponible:300, parcial:true },
+      { partida:4, clave:"", articulo:"Lámina inoxidable cal 18 4x8", unidad:"PIEZA", cantidad:4, no_disponible:true }
+    ]
+  }
+};
+async function obtenerDatos(folio){
+  if (window.PYLSA_VENTA) return { d: window.PYLSA_VENTA, demo:false };
+  if (CONFIG.ENDPOINT_DATOS && folio){
+    const r = await fetch(CONFIG.ENDPOINT_DATOS + "&folio=" + encodeURIComponent(folio));
+    if (!r.ok) throw new Error("No se pudo cargar la cotización " + folio + " (HTTP " + r.status + ")");
+    return { d: await r.json(), demo:false };
+  }
+  const d = JSON.parse(JSON.stringify(DEMO));
+  if (folio){ d.solicitud.folio = folio; d.precios.folio = folio; }
+  return { d, demo:true };
+}
+
+let SOL = null, PRE = null, MODO_DEMO = true;
+const sel = {};   // sel[partida] = { on, cant, precio }
+
+/* ---------- Resumen ---------- */
+function pintarResumen(){
+  const s = SOL, e = s.entrega || {}, d = e.direccion || {};
+  const fecha = s.fecha_solicitud ? s.fecha_solicitud.split("-").reverse().join("/") : "";
+  const ent = e.tipo === "directa" ? `Directa · ${d.municipio}, ${d.estado}` : `Suc. ${e.sucursal_entrega || ""}`;
+  $("resumen").innerHTML = `
+    <div><i>Cliente</i><b>${esc(s.cliente?.nombre)}</b><small>Clave ${esc(s.cliente?.clave)}</small></div>
+    <div><i>Vendedor</i><b>${esc(s.vendedor)}</b><small>Suc. ${esc(s.usuario?.sucursal)}</small></div>
+    <div><i>Solicitada</i><b>${esc(fecha)}</b></div>
+    <div><i>Precio autorizado por</i><b>${esc(PRE.usuario?.nombre || "Regional")}</b></div>
+    <div><i>Entrega cotizada</i><b>${esc(ent)}</b></div>
+    ${PRE.observaciones ? `<div class="obs"><i>Observaciones del regional</i>${esc(PRE.observaciones)}</div>` : ""}`;
+  $("hFolio").textContent = s.folio || PRE.folio || "";
+}
+
+/* ---------- Partidas ---------- */
+function pintarPartidas(){
+  $("partidas").innerHTML = PRE.partidas.map(p => {
+    const cod = p.clave ? `<span class="cod">${esc(p.clave)}</span>` : `<span class="cod sc">S/C</span>`;
+    if (p.no_disponible) return `<div class="pt nd"><span></span>${cod}<span class="desc">${esc(p.articulo)}</span><span class="ndtxt">No disponible</span></div>`;
+    const s = sel[p.partida];
+    return `<div class="pt ${s.on ? "" : "off"}" data-pt="${p.partida}">
+      <input type="checkbox" data-on="${p.partida}" ${s.on ? "checked" : ""} title="Incluir en la venta">
+      ${cod}
+      <span class="desc">${esc(p.articulo)}
+        <small>Autorizado: ${fmt(p.cantidad, Number.isInteger(p.cantidad)?0:2)} ${esc(umc(p.unidad))} a ${fmt$(p.precio_venta_unitario)}/${esc(umc(p.unidad))} · ${p.tiempo_entrega_dias == null ? "—" : p.tiempo_entrega_dias + (+p.tiempo_entrega_dias === 1 ? " día hábil" : " días hábiles")}${p.parcial ? ` · <b style="color:var(--ambar)">disponible ${fmt(p.cantidad_disponible,0)}</b>` : ""}</small></span>
+      <span class="uw"><input type="number" min="0" step="any" inputmode="decimal" data-cant="${p.partida}" value="${s.cant}"><span>${esc(umc(p.unidad))}</span></span>
+      <span><span class="uw"><input type="number" min="0" step="0.01" inputmode="decimal" data-pv="${p.partida}" value="${s.precio}"><span>/${esc(umc(p.unidad))}</span></span>
+        <span class="cambio"></span></span>
+    </div>`;
+  }).join("");
+  marcarCambios();
+}
+function marcarCambios(){
+  for (const p of PRE.partidas){
+    if (p.no_disponible) continue;
+    const row = document.querySelector(`.pt[data-pt="${p.partida}"]`), s = sel[p.partida];
+    row.classList.toggle("off", !s.on);
+    row.querySelectorAll("input[type=number]").forEach(i => i.disabled = !s.on);
+    const c = row.querySelector(".cambio");
+    c.textContent = s.on && +s.precio !== +p.precio_venta_unitario ? "Precio distinto al autorizado" : "";
+  }
+}
+document.addEventListener("change", e => {
+  const el = e.target;
+  if (el.dataset.on){ sel[+el.dataset.on].on = el.checked; marcarCambios(); }
+});
+document.addEventListener("input", e => {
+  const el = e.target;
+  if (el.dataset.cant) sel[+el.dataset.cant].cant = el.value;
+  if (el.dataset.pv){ sel[+el.dataset.pv].precio = el.value; marcarCambios(); }
+});
+
+/* ---------- Resultado / entrega ---------- */
+/* ---------- Entrega ---------- */
+function tipoEnt(){ const r = document.querySelector('input[name="tipoEnt"]:checked'); return r ? r.value : ""; }
+document.querySelectorAll('input[name="tipoEnt"]').forEach(r => r.addEventListener("change", () => {
+  const t = tipoEnt();
+  $("boxDirecta").classList.toggle("oculto", t !== "directa");
+  $("boxSucursal").classList.toggle("oculto", t !== "sucursal");
+  $("boxRecibe").classList.toggle("oculto", !t);
+}));
+const DIAS = ["L","M","Mi","J","V","S","D"], DIAS_NOMBRE = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+$("dias").innerHTML = DIAS.map((d,i) => `<label title="${DIAS_NOMBRE[i]}"><input type="checkbox" value="${DIAS_NOMBRE[i]}" ${i<5?"checked":""}>${d}</label>`).join("");
+$("dCp").addEventListener("input", e => e.target.value = e.target.value.replace(/\D/g,"").slice(0,5));
+$("lstSuc").innerHTML = CONFIG.SUCURSALES.map(x => `<option value="${esc(x)}">`).join("");
+
+/* ---------- Adjuntos ---------- */
+const archivos = { comprobante_pago: [], cotizacion_cliente: [] };
+document.querySelectorAll(".adj").forEach(box => {
+  const key = box.dataset.adj, input = box.querySelector("input");
+  const pintar = () => {
+    box.classList.toggle("ok", archivos[key].length > 0);
+    box.querySelector(".files").innerHTML = archivos[key].map((f,i) =>
+      `✓ ${esc(f.name)} <small>(${fmt(f.size/1048576,1)} MB)</small> <a href="#" data-quitar="${key}:${i}" style="color:var(--rojo)">quitar</a>`).join("<br>");
+  };
+  const agregar = files => {
+    for (const f of files){
+      if (!/\.(pdf|jpe?g|png)$/i.test(f.name)){ mostrar("err", `"${esc(f.name)}" no es PDF, JPG ni PNG.`); continue; }
+      if (f.size > CONFIG.MAX_MB * 1048576){ mostrar("err", `"${esc(f.name)}" pesa más de ${CONFIG.MAX_MB} MB.`); continue; }
+      archivos[key].push(f);
+    }
+    pintar();
+  };
+  box.addEventListener("click", e => {
+    const q = e.target.closest("[data-quitar]");
+    if (q){ e.preventDefault(); e.stopPropagation(); const [k,i] = q.dataset.quitar.split(":"); archivos[k].splice(+i,1); pintar(); return; }
+    input.click();
+  });
+  input.addEventListener("change", () => { agregar(input.files); input.value = ""; });
+  box.addEventListener("dragover", e => { e.preventDefault(); box.classList.add("drag"); });
+  box.addEventListener("dragleave", () => box.classList.remove("drag"));
+  box.addEventListener("drop", e => { e.preventDefault(); box.classList.remove("drag"); agregar(e.dataTransfer.files); });
+});
+
+function mostrar(tipo, html){
+  const m = $("msg"); m.className = "msg " + tipo; m.innerHTML = html;
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+function hoyLocal(){ const d = new Date(), z = n => String(n).padStart(2,"0");
+  return { iso:`${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`, hora:`${z(d.getHours())}:${z(d.getMinutes())}` }; }
+const usuarioOut = () => ({ id_usuario: USUARIO.id_usuario, nombre: USUARIO.nombre, puesto: USUARIO.puesto, correo: USUARIO.correo, sucursal: USUARIO.sucursal });
+
+/* ---------- VENTA ---------- */
+function datosVenta(){
+  const t = tipoEnt(), v = id => $(id).value.trim();
+  const partidas = PRE.partidas.filter(p => !p.no_disponible && sel[p.partida].on).map(p => {
+    const s = sel[p.partida], cant = parseFloat(s.cant), pv = parseFloat(s.precio);
+    return { partida: p.partida, clave: p.clave, articulo: p.articulo, unidad: p.unidad,
+      cantidad_autorizada: p.cantidad, cantidad_vendida: cant,
+      precio_autorizado: p.precio_venta_unitario, precio_vendido: pv,
+      precio_modificado: pv !== +p.precio_venta_unitario };
+  });
+  const h = hoyLocal();
+  return {
+    tipo_evento: "venta_registrada", resultado: "vendida",
+    folio: SOL.folio || PRE.folio, fecha_venta: h.iso, hora_venta: h.hora,
+    usuario: usuarioOut(),
+    partidas, partidas_no_vendidas: PRE.partidas.filter(p => !p.no_disponible && !sel[p.partida].on).map(p => p.partida),
+    entrega: {
+      tipo: t,   // "directa" | "sucursal"
+      sucursal: t === "sucursal" ? v("entSucursal") : null,
+      direccion: t !== "directa" ? null : {
+        calle: v("dCalle"), colonia: v("dColonia"), cp: v("dCp"), municipio: v("dMunicipio"),
+        estado: $("dEstado").value, google_maps: v("dMaps"), referencias: v("dRef") },
+      recibe: { nombre: v("rNombre"), telefono: v("rTel") },
+      descarga: { dias: [...document.querySelectorAll("#dias input:checked")].map(i => i.value),
+                  desde: $("hDesde").value, hasta: $("hHasta").value, indicaciones: v("indicaciones") }
+    },
+    adjuntos: { comprobante_pago: archivos.comprobante_pago.map(f => f.name), cotizacion_cliente: archivos.cotizacion_cliente.map(f => f.name) },
+    observaciones: v("obsVenta"),
+    estado_sugerido: "Vendida",
+    enviado_en: new Date().toISOString()
+  };
+}
+function validarVenta(d){
+  const err = [];
+  if (!d.partidas.length) err.push("Marca al menos un material que haya pagado el cliente.");
+  d.partidas.forEach(p => {
+    if (!(p.cantidad_vendida > 0)) err.push(`Material ${p.partida}: indica la cantidad vendida.`);
+    if (!(p.precio_vendido > 0)) err.push(`Material ${p.partida}: indica el precio de venta.`);
+  });
+  if (!archivos.comprobante_pago.length) err.push("Adjunta el comprobante de pago.");
+  if (!archivos.cotizacion_cliente.length) err.push("Adjunta la cotización que pagó el cliente.");
+  const e = d.entrega;
+  if (!e.tipo) err.push("Indica si la entrega es directa o en sucursal.");
+  if (e.tipo === "sucursal" && !e.sucursal) err.push("Indica la sucursal de entrega.");
+  if (e.tipo === "directa"){
+    const a = e.direccion;
+    if (!a.calle || !a.colonia || !a.municipio) err.push("Completa la dirección: calle y número, colonia y municipio.");
+    if (!/^\d{5}$/.test(a.cp)) err.push("Código postal de entrega (5 dígitos).");
+    if (!/^https?:\/\//i.test(a.google_maps)) err.push("Pega el enlace de Google Maps de la entrega.");
+  }
+  if (e.tipo){
+    if (!e.recibe.nombre) err.push("Indica el nombre de quien recibe.");
+    if (e.recibe.telefono.replace(/\D/g,"").length < 10) err.push("Indica el teléfono de quien recibe (10 dígitos).");
+    if (!e.descarga.dias.length) err.push("Marca los días de descarga.");
+    if (!e.descarga.desde || !e.descarga.hasta || e.descarga.desde >= e.descarga.hasta) err.push("Revisa el horario de descarga.");
+  }
+  return err;
+}
+$("enviarVenta").onclick = async () => {
+  const d = datosVenta(), err = validarVenta(d);
+  if (err.length){ mostrar("err", "<b>Revisa lo siguiente:</b><br>" + err.join("<br>")); return; }
+  const fd = new FormData();
+  fd.append("datos", JSON.stringify(d));
+  archivos.comprobante_pago.forEach(f => fd.append("comprobante_pago", f, f.name));
+  archivos.cotizacion_cliente.forEach(f => fd.append("cotizacion_cliente", f, f.name));
+  await enviar(fd, d, `✅ Venta registrada. La solicitud de compra se envió a dirección para su autorización; después le llegará a Compras.`, $("enviarVenta"));
+};
+
+async function enviar(fd, d, okTxt, btn){
+  if (MODO_DEMO){
+    $("contenido").style.display = "none";
+    mostrar("ok", `✅ (Demo) Se habría enviado así:<pre>${esc(JSON.stringify(d, null, 2))}</pre>
+      <p><a href="${location.pathname}">Volver a empezar</a></p>`);
+    return;
+  }
+  const txt = btn.textContent; btn.disabled = true; btn.textContent = "Enviando…";
+  try{
+    const r = await fetch(CONFIG.ENDPOINT_RESPUESTA, { method:"POST", body: fd });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    $("contenido").style.display = "none";
+    mostrar("ok", okTxt);
+  }catch(e){
+    mostrar("err", "No se pudo enviar. Inténtalo de nuevo.<br><small>" + esc(e.message) + "</small>");
+  }finally{ btn.disabled = false; btn.textContent = txt; }
+}
+
+/* ---------- Arranque ---------- */
+// Con ?folio= (botón del correo) carga directo; sin folio (portal) pide el folio primero.
+$("barraUsuario").innerHTML = `<span>Sucursal: <b>${esc(USUARIO.sucursal || "")}</b></span><span>Usuario: <b>${esc(USUARIO.nombre)}</b></span>`;
+$("btnFolio").onclick = () => {
+  const f = $("inFolio").value.trim().toUpperCase();
+  if (!f){ mostrar("err", "Escribe el folio de la solicitud de cotización a Compras (COT-…)."); $("inFolio").focus(); return; }
+  cargar(f);
+};
+$("inFolio").addEventListener("keydown", e => { if (e.key === "Enter") $("btnFolio").click(); });
+const folioURL = new URLSearchParams(location.search).get("folio");
+if (folioURL || window.PYLSA_VENTA) cargar(folioURL);
+else { $("inicio").classList.remove("oculto"); $("inFolio").focus(); }
+
+async function cargar(folio){
+  try{
+    const { d, demo } = await obtenerDatos(folio);
+    SOL = d.solicitud || {}; PRE = d.precios || { partidas: [] };
+    MODO_DEMO = demo || !usuarioReal || !CONFIG.ENDPOINT_RESPUESTA;
+    if (MODO_DEMO){
+      const m = [];
+      if (demo) m.push("datos de ejemplo");
+      if (!usuarioReal) m.push("sin sesión de usuario");
+      if (!CONFIG.ENDPOINT_RESPUESTA) m.push("sin endpoint de respuesta");
+      $("avisoDemo").style.display = "block";
+      $("avisoDemo").textContent = "Modo demo (" + m.join(", ") + "). No se enviará nada; se mostrarán los datos que se mandarían.";
+    }
+    for (const p of PRE.partidas) if (!p.no_disponible)
+      sel[p.partida] = { on: true, cant: p.parcial ? p.cantidad_disponible : p.cantidad, precio: p.precio_venta_unitario };
+    // Entrega: se precarga con lo que se cotizó (editable)
+    const e = SOL.entrega || {}, dd = e.direccion || {};
+    if (e.tipo === "directa"){
+      document.querySelector('input[name="tipoEnt"][value="directa"]').checked = true;
+      $("dMunicipio").value = dd.municipio || ""; $("dEstado").value = dd.estado || "Veracruz";
+      $("dCp").value = dd.cp || ""; $("dMaps").value = dd.google_maps || "";
+    } else if (e.tipo){
+      document.querySelector('input[name="tipoEnt"][value="sucursal"]').checked = true;
+      $("entSucursal").value = e.sucursal_entrega || USUARIO.sucursal || "";
+    }
+    document.querySelector('input[name="tipoEnt"]:checked')?.dispatchEvent(new Event("change"));
+    pintarResumen(); pintarPartidas();
+    $("inicio").classList.add("oculto"); $("contenido").classList.remove("oculto"); $("msg").className = "msg"; $("msg").innerHTML = "";
+  }catch(err){
+    mostrar("err", esc(err.message));   // p. ej. folio no encontrado
+  }
+}
+</script>
+</body>
+</html>

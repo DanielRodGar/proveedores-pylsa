@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Autorización de compra · PYLSA</title>
+<!--
+=====================================================================
+  PYLSA · PROCESO DE COTIZACIÓN · AUTORIZACIÓN DE COMPRA (DIRECCIÓN)
+=====================================================================
+  Se abre con los botones del correo correo_autorizacion_direccion.html.
+  - "Autorizar compra": registra la autorización AL ABRIR la página (un solo
+    clic desde el correo) y muestra la confirmación.
+  - "Solicitar ajuste" / "Rechazar": solo pide el comentario y se envía.
+  (La información completa la ve dirección en el correo.)
+  Enlaces:
+     autorizacion_compra.html?folio=COT-000123&accion=autorizar
+     autorizacion_compra.html?folio=COT-000123&accion=ajuste
+     autorizacion_compra.html?folio=COT-000123&accion=rechazar
+
+  NOTAS PARA INTEGRACIÓN:
+  1) USUARIO LOGUEADO (Dirección): window.PYLSA_USUARIO o sessionStorage /
+     localStorage "pylsa_usuario". Su nombre queda como "autorizó".
+  2) DATOS (resumen): window.PYLSA_AUTORIZACION o
+     CONFIG.ENDPOINT_DATOS + "?folio=XXXX" (GET → JSON):
+       { folio, sucursal, solicitante, cliente:{clave,nombre}, vendedor,
+         costo_total, venta_total, utilidad_total, utilidad_pct,
+         partidas:[ { clave, articulo, cantidad, unidad, proveedor_num,
+                      costo_unitario, precio_venta } ],
+         entrega:{ tipo:"directa"|"sucursal", lugar, referencias, google_maps,
+                   recibe, telefono, dias, horario, indicaciones },
+         adjuntos:[ { tipo:"Comprobante de pago"|"Cotización pagada", nombre, url } ] }
+     (la utilidad por producto se calcula en la página; el % es SOBRE VENTA:
+      (precio − costo) ÷ precio)
+  3) ENVÍO: CONFIG.ENDPOINT_RESPUESTA recibe POST JSON
+       { tipo_evento:"autorizacion_compra", folio, decision:"autorizada"|"ajuste"|"rechazada",
+         comentario, usuario, fecha, hora }
+     Autorizada → estado "Compra autorizada" + correo_solicitud_compra.html a
+                  Compras con {{autorizo}} = nombre de este usuario.
+     Ajuste     → estado "Ajuste solicitado" + aviso al regional y a la sucursal con
+                  las indicaciones (revisar precio, proveedor, cantidades…). Una
+                  vez corregido, vuelve a llegar a dirección para autorizar.
+     Rechazada  → estado "Compra rechazada" + aviso a la sucursal con el comentario.
+     Vacío → MODO DEMO.
+=====================================================================
+-->
+<style>
+  :root{ --azul:#1f3a5f; --azul2:#2d5687; --gris:#f3f5f8; --borde:#d5dbe3; --texto:#1d2733; --suave:#5d6b7a; --rojo:#c0392b; --verde:#1e8449; --ambar:#b9770e; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--gris);color:var(--texto)}
+  header{background:var(--ambar);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  header h1{margin:0;font-size:19px}
+  header .folio{font-size:19px;font-weight:800}
+  .usuario{background:var(--azul2);color:#fff;padding:8px 18px;font-size:13px}
+  .demo{background:#fff4e0;color:var(--ambar);border-bottom:1px solid #f0d9a8;padding:8px 18px;font-size:13px}
+  main{max-width:620px;margin:0 auto;padding:16px}
+  .oculto{display:none!important}
+  .tw{overflow-x:auto}
+  .ent{display:grid;grid-template-columns:1.2fr 1fr;gap:10px 16px;background:var(--gris);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.45}
+  .ent i{display:block;font-style:normal;font-size:10px;font-weight:700;text-transform:uppercase;color:var(--suave)}
+  .ent small{color:var(--suave)}
+  .ent a{color:var(--azul2)}
+  .adj{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .adj a{display:inline-flex;align-items:center;gap:6px;border:1px solid #b8e0c6;background:#e9f7ef;color:var(--texto);text-decoration:none;border-radius:7px;padding:7px 10px;font-size:13px}
+  .adj a small{color:var(--suave)}
+  @media(max-width:520px){.ent{grid-template-columns:1fr}}
+  .tb{width:100%;border-collapse:collapse;font-size:13px;min-width:640px}
+  .tb th{font-size:10px;text-transform:uppercase;color:var(--suave);text-align:left;border-bottom:2px solid var(--borde);padding:5px 6px}
+  .tb td{border-bottom:1px solid #e8ecf1;padding:7px 6px;vertical-align:top}
+  .tb .r{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .tb .cod{font-weight:700;color:var(--rojo);margin-right:4px}
+  .tb small{display:block;color:var(--suave);font-size:11px}
+  .tb .ut{color:var(--verde);font-weight:700}
+  .tb .neg{color:var(--rojo);font-weight:700}
+  .card{background:#fff;border:1px solid var(--borde);border-radius:10px;padding:16px;margin-bottom:12px}
+  .res{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;font-size:14px}
+  .res i{display:block;font-style:normal;font-size:10.5px;font-weight:700;text-transform:uppercase;color:var(--suave);margin-bottom:2px}
+  .res small{display:block;color:var(--suave);font-size:12px}
+  .tot{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--azul);color:#fff;border-radius:8px;padding:10px 12px;margin-top:12px;font-size:12px}
+  .tot b{display:block;font-size:15px}
+  .tot .u b{color:#9be7b4}
+  .dec{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .dec label:has(input[value=ajuste]:checked){border-color:#e0a800;background:#fff6d6;color:#7a5c00}
+  .btn.aj{background:#f5b700;color:#3b2f00}
+  .dec label{display:flex;align-items:center;justify-content:center;gap:8px;border:2px solid var(--borde);border-radius:9px;padding:14px;cursor:pointer;font-size:16px;font-weight:700}
+  .dec input{transform:scale(1.2)}
+  .dec label:has(input[value=autorizada]:checked){border-color:var(--verde);background:#e9f7ef;color:var(--verde)}
+  .dec label:has(input[value=rechazada]:checked){border-color:var(--rojo);background:#fdecea;color:var(--rojo)}
+  label.t{display:block;font-size:12px;font-weight:600;margin:12px 0 4px}
+  textarea{width:100%;min-height:60px;padding:9px;border:1px solid var(--borde);border-radius:7px;font-size:14px;font-family:inherit;resize:vertical}
+  .btn{display:block;width:100%;border:none;border-radius:8px;padding:14px;font-size:16px;font-weight:600;cursor:pointer;color:#fff;background:var(--azul)}
+  .btn.ok{background:var(--verde)} .btn.no{background:var(--rojo)}
+  .btn:disabled{opacity:.6;cursor:wait}
+  .msg{padding:14px;border-radius:8px;margin-bottom:14px;display:none}
+  .msg.ok{display:block;background:#e9f7ef;border:1px solid var(--verde);color:var(--verde)}
+  .msg.err{display:block;background:#fdecea;border:1px solid var(--rojo);color:var(--rojo)}
+  pre{background:#1d2733;color:#d6e2f0;padding:12px;border-radius:8px;font-size:12px;overflow:auto}
+  .hint{font-size:12px;color:var(--suave)}
+  @media(max-width:520px){.res,.tot,.dec{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="hTitulo">Autorización de compra</h1>
+  <span class="folio" id="hFolio"></span>
+</header>
+<div class="usuario" id="barraUsuario"></div>
+<div id="avisoDemo" class="demo" style="display:none"></div>
+
+<main>
+  <div id="msg" class="msg"></div>
+  <div id="contenido" style="display:none">
+    <div class="card oculto">
+      <div class="res" id="resumen"></div>
+    </div>
+    <div class="card oculto">
+      <h2 style="margin:0 0 8px;font-size:15px;color:var(--azul)">Utilidad por producto</h2>
+      <div class="tw"><table class="tb">
+        <thead><tr><th>Producto</th><th class="r">Cantidad</th><th class="r">Costo unit.</th><th class="r">Precio venta</th><th class="r">Utilidad unit.</th><th class="r">%</th><th class="r">Utilidad total</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table></div>
+    </div>
+    <div class="card oculto">
+      <h2 style="margin:0 0 8px;font-size:15px;color:var(--azul)">Entrega y comprobantes</h2>
+      <div class="ent" id="entrega"></div>
+      <div class="adj" id="adjuntos"></div>
+    </div>
+    <div class="card">
+      <p class="cli" id="cliLinea" style="margin:0 0 10px;font-size:14px;color:var(--suave)"></p>
+      <div class="dec oculto">
+        <label><input type="radio" name="dec" value="autorizada"> ✔ Autorizar</label>
+        <label><input type="radio" name="dec" value="ajuste"> ✎ Solicitar ajuste</label>
+        <label><input type="radio" name="dec" value="rechazada"> ✖ Rechazar</label>
+      </div>
+      <label class="t" for="coment" id="lblComent">Comentario (opcional)</label>
+      <textarea id="coment" placeholder="Indicaciones para Compras o motivo del rechazo"></textarea>
+    </div>
+    <button type="button" class="btn" id="enviar">Enviar</button>
+  </div>
+</main>
+
+<script>
+/* ⚠ MODO PRUEBAS: usuario fijo mientras no hay login del portal. Quitar este bloque en producción. */
+window.PYLSA_USUARIO = window.PYLSA_USUARIO || { id_usuario:"prueba-dir", nombre:"Daniel Rodríguez (dirección prueba)", puesto:"Director", correo:"danielrodgar54@gmail.com" };
+</script>
+<script>
+const CONFIG = { ENDPOINT_DATOS: "https://danielrodriguez.app.n8n.cloud/webhook/cot-datos?vista=autorizacion", ENDPOINT_RESPUESTA: "https://danielrodriguez.app.n8n.cloud/webhook/cot-evento" };
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt$ = n => "$" + (+n).toLocaleString("es-MX", {minimumFractionDigits:2, maximumFractionDigits:2});
+
+function obtenerUsuario(){
+  if (window.PYLSA_USUARIO) return window.PYLSA_USUARIO;
+  for (const st of [sessionStorage, localStorage]) { try { const v = st.getItem("pylsa_usuario"); if (v) return JSON.parse(v); } catch(_){} }
+  return null;
+}
+const usuarioReal = obtenerUsuario();
+const USUARIO = usuarioReal || { id_usuario:"demo", nombre:"Dirección (prueba)", puesto:"Director", correo:"direccion@pylsa.com" };
+const Q = new URLSearchParams(location.search);
+const FOLIO = Q.get("folio") || "COT-DEMO";
+let MODO_DEMO = true;
+
+const DEMO = { folio: FOLIO, sucursal:"Tuxtepec 1", solicitante:"Juan Pérez", cliente:{ clave:"004512", nombre:"Constructora del Golfo" },
+  vendedor:"Juan Pérez",
+  entrega:{ tipo:"directa", lugar:"Av. Independencia 1250, Col. Centro, C.P. 94290, Boca del Río, Veracruz", referencias:"Entre Juárez y Allende, portón gris",
+            google_maps:"https://maps.app.goo.gl/ejemplo", recibe:"Ing. Pedro Ruiz", telefono:"229 123 4567", dias:"Lunes a sábado", horario:"08:00 a 17:00", indicaciones:"Se requiere grúa; no entra tráiler" },
+  adjuntos:[ { tipo:"Comprobante de pago", nombre:"comprobante_pago.pdf", url:"#" }, { tipo:"Cotización pagada", nombre:"cotizacion_cliente.pdf", url:"#" } ],
+  partidas:[
+    { clave:"001937", articulo:"PTR 3 X 3 C-3/16 A 6.10 MTS (PZ)", cantidad:372, unidad:"PIEZA", proveedor:"Ternium", costo_unitario:1385.10, precio_venta:1610 },
+    { clave:"002966", articulo:"VIGA I.P.R. 6 X 4 EN (13.3 KG/MT) DE 9LBS \"L\"", cantidad:300, unidad:"KILOGRAMO", proveedor:"Aceros del Norte", costo_unitario:23.90, precio_venta:28.50 }
+  ] };
+const UM = {PIEZA:"pza", KILOGRAMO:"kg", METRO:"m", "METRO LINEAL":"ml"};
+const um = u => UM[u] || String(u||"").toLowerCase();
+const nf = (n,d=0) => (+n).toLocaleString("es-MX",{minimumFractionDigits:d,maximumFractionDigits:d});
+
+function pintar(d){
+  $("hFolio").textContent = d.folio || FOLIO;
+  $("resumen").innerHTML = `
+    <div><i>Solicita</i><b>Suc. ${esc(d.sucursal)}</b><small>${esc(d.solicitante || "")}</small></div>
+    <div><i>Cliente</i><b>${esc(d.cliente?.nombre)}</b><small>Clave ${esc(d.cliente?.clave)} · Vendedor ${esc(d.vendedor)}</small></div>
+    <div><i>Productos</i><b>${(d.partidas||[]).length}</b></div>`;
+  const e = d.entrega || {};
+  $("entrega").innerHTML = `
+    <div><i>${e.tipo === "sucursal" ? "Entrega en sucursal" : "Entrega directa"}</i><b>${esc(e.lugar)}</b>
+      ${e.referencias ? `<br><small>${esc(e.referencias)}</small>` : ""}
+      ${e.google_maps ? `<br><a href="${esc(e.google_maps)}" target="_blank" rel="noopener">Ver ubicación en Google Maps ↗</a>` : ""}</div>
+    <div><i>Recibe</i><b>${esc(e.recibe)}</b> · Tel. ${esc(e.telefono)}
+      <i style="margin-top:6px">Descarga</i>${esc(e.dias)} · ${esc(e.horario)}${e.indicaciones ? `<br><small>${esc(e.indicaciones)}</small>` : ""}</div>`;
+  $("adjuntos").innerHTML = (d.adjuntos || []).map(a =>
+    `<a href="${esc(a.url)}" target="_blank" rel="noopener">📎 <span><b>${esc(a.tipo)}</b><br><small>${esc(a.nombre)}</small></span></a>`).join("")
+    || `<span class="hint">Sin adjuntos.</span>`;
+  let tc = 0, tv = 0;
+  $("tbody").innerHTML = (d.partidas||[]).map(p => {
+    const c = +p.costo_unitario, v = +p.precio_venta, q = +p.cantidad, u = v - c, pct = v ? u / v * 100 : 0;   // utilidad SOBRE VENTA
+    tc += c * q; tv += v * q;
+    const cls = u < 0 ? "neg" : "ut";
+    return `<tr>
+      <td><span class="cod">${esc(p.clave || "S/C")}</span>${esc(p.articulo)}${p.proveedor ? `<small>${esc(p.proveedor)}</small>` : ""}</td>
+      <td class="r"><b>${nf(q, Number.isInteger(q)?0:2)} ${esc(um(p.unidad))}</b></td>
+      <td class="r">${fmt$(c)}</td>
+      <td class="r">${fmt$(v)}</td>
+      <td class="r ${cls}">${fmt$(u)}</td>
+      <td class="r ${cls}">${pct.toFixed(1)} %</td>
+      <td class="r ${cls}">${fmt$(u * q)}</td></tr>`;
+  }).join("");
+
+}
+function marcar(v){
+  const r = document.querySelector(`input[name=dec][value="${v}"]`); if (r) r.checked = true;
+  const cfg = {
+    autorizada: { lbl:"Comentario (opcional)", cls:"ok", btn:"Autorizar compra", ph:"Indicaciones para Compras (opcional)" },
+    ajuste:     { lbl:'¿Qué hay que ajustar? <span style="color:var(--rojo)">*</span>', cls:"aj", btn:"Solicitar ajuste", ph:"Ej. Subir el precio del PTR a $1,650; revisar otro proveedor para la viga" },
+    rechazada:  { lbl:'Motivo del rechazo <span style="color:var(--rojo)">*</span>', cls:"no", btn:"Rechazar compra", ph:"Motivo del rechazo" }
+  }[v];
+  $("lblComent").innerHTML = cfg.lbl; $("coment").placeholder = cfg.ph;
+  $("enviar").className = "btn " + cfg.cls; $("enviar").textContent = cfg.btn;
+  if (v !== "autorizada") $("coment").focus();
+}
+document.querySelectorAll("input[name=dec]").forEach(r => r.addEventListener("change", () => marcar(r.value)));
+function mostrar(tipo, html){ const m = $("msg"); m.className = "msg " + tipo; m.innerHTML = html; window.scrollTo({top:0, behavior:"smooth"}); }
+
+async function enviarDecision(){
+  const r = document.querySelector("input[name=dec]:checked"), decision = r ? r.value : "";
+  const comentario = $("coment").value.trim();
+  if (!decision) return mostrar("err", "Elige si autorizas o rechazas la compra.");
+  if (decision === "rechazada" && !comentario) return mostrar("err", "Escribe el motivo del rechazo.");
+  if (decision === "ajuste" && !comentario) return mostrar("err", "Indica qué hay que ajustar.");
+  const d = new Date(), z = n => String(n).padStart(2,"0");
+  const payload = { tipo_evento:"autorizacion_compra", folio: FOLIO, decision, comentario,
+    fecha:`${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`, hora:`${z(d.getHours())}:${z(d.getMinutes())}`,
+    usuario:{ id_usuario: USUARIO.id_usuario, nombre: USUARIO.nombre, puesto: USUARIO.puesto, correo: USUARIO.correo },
+    estado_sugerido: { autorizada:"Compra autorizada", ajuste:"Ajuste solicitado", rechazada:"Compra rechazada" }[decision], enviado_en: d.toISOString() };
+  const OK = { autorizada:"✅ Compra autorizada. Se envió a Compras con tu nombre como autorizador.",
+               ajuste:"✎ Ajuste solicitado. Se avisó al regional y a la sucursal con tus indicaciones.",
+               rechazada:"Compra rechazada. Se avisó a la sucursal." };
+  if (MODO_DEMO){ $("contenido").style.display = "none"; return mostrar("ok", `${OK[decision]}<br><small>(Demo: no se envió nada. Datos que se mandarían:)</small><pre>${esc(JSON.stringify(payload, null, 2))}</pre>`); }
+  const btn = $("enviar"), txt = btn.textContent; btn.disabled = true; btn.textContent = "Enviando…";
+  try{
+    const res = await fetch(CONFIG.ENDPOINT_RESPUESTA, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    $("contenido").style.display = "none";
+    mostrar("ok", OK[decision]);
+  }catch(e){ mostrar("err", "No se pudo enviar. Inténtalo de nuevo.<br><small>" + esc(e.message) + "</small>"); }
+  finally{ btn.disabled = false; btn.textContent = txt; }
+}
+$("enviar").onclick = enviarDecision;
+
+(async () => {
+  $("barraUsuario").innerHTML = `Autoriza: <b>${esc(USUARIO.nombre)}</b>`;
+  let datos = window.PYLSA_AUTORIZACION || null, demo = false;
+  try{ if (!datos && CONFIG.ENDPOINT_DATOS){ const r = await fetch(CONFIG.ENDPOINT_DATOS + "&folio=" + encodeURIComponent(FOLIO)); if (r.ok) datos = await r.json(); } }catch(_){}
+  if (!datos){ datos = DEMO; demo = true; }
+  pintar(datos);
+  MODO_DEMO = demo || !usuarioReal || !CONFIG.ENDPOINT_RESPUESTA;
+  if (MODO_DEMO){ $("avisoDemo").style.display = "block"; $("avisoDemo").textContent = "Modo demo: no se enviará nada; se mostrarán los datos que se mandarían."; }
+  const acc = Q.get("accion");
+  const dec = acc === "rechazar" ? "rechazada" : acc === "ajuste" ? "ajuste" : "autorizada";
+  marcar(dec);
+  $("cliLinea").innerHTML = `Folio <b>${esc(datos.folio || FOLIO)}</b> · ${esc(datos.cliente?.nombre || "")} · Suc. ${esc(datos.sucursal || "")}`;
+  if (dec === "autorizada"){
+    // Un clic en "Autorizar compra" del correo basta: se registra directamente.
+    $("hTitulo").textContent = "Autorizando compra…";
+    await enviarDecision();
+    $("hTitulo").textContent = "Compra autorizada";
+    document.querySelector("header").style.background = "var(--verde)";
+  } else {
+    $("hTitulo").textContent = dec === "ajuste" ? "Solicitar ajuste" : "Rechazar compra";
+    document.querySelector("header").style.background = dec === "ajuste" ? "#e0a800" : "var(--rojo)";
+    $("contenido").style.display = "";
+    $("coment").focus();
+  }
+})();
+</script>
+</body>
+</html>

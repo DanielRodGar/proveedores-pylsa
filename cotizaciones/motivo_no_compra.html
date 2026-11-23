@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>El cliente no compró · PYLSA</title>
+<!--
+=====================================================================
+  PYLSA · PROCESO DE COTIZACIÓN · PASO 5B: EL CLIENTE NO COMPRÓ (SUCURSAL)
+=====================================================================
+  Se abre con el botón rojo "Indicar motivo" del correo a la sucursal:
+     motivo_no_compra.html?folio=COT-000123
+
+  NOTAS PARA INTEGRACIÓN:
+  1) USUARIO LOGUEADO: window.PYLSA_USUARIO o sessionStorage /
+     localStorage "pylsa_usuario" (JSON). Sin sesión → MODO DEMO.
+  2) DATOS: solo necesita el folio (de la URL) y, opcionalmente, el
+     cliente para mostrarlo: window.PYLSA_MOTIVO = { folio, cliente:{clave,nombre} }
+     o CONFIG.ENDPOINT_DATOS + "?folio=XXXX" (GET → mismo JSON).
+  3) ENVÍO: CONFIG.ENDPOINT_RESPUESTA recibe un POST JSON
+     { tipo_evento:"cotizacion_perdida", folio, motivo, comentario, ... }
+     Vacío → MODO DEMO. El backend cambia el estado a "Perdida".
+=====================================================================
+-->
+<style>
+  :root{ --azul:#1f3a5f; --azul2:#2d5687; --gris:#f3f5f8; --borde:#d5dbe3; --texto:#1d2733; --suave:#5d6b7a; --rojo:#c0392b; --verde:#1e8449; --ambar:#b9770e; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--gris);color:var(--texto)}
+  header{background:var(--rojo);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  header h1{margin:0;font-size:19px}
+  header .folio{font-size:19px;font-weight:800}
+  .demo{background:#fff4e0;color:var(--ambar);border-bottom:1px solid #f0d9a8;padding:8px 18px;font-size:13px}
+  main{max-width:620px;margin:0 auto;padding:16px}
+  .cli{font-size:14px;color:var(--suave);margin:0 0 12px}
+  .cli b{color:var(--texto)}
+  .card{background:#fff;border:1px solid var(--borde);border-radius:10px;padding:16px}
+  .card h2{margin:0 0 12px;font-size:16px;color:var(--texto)}
+  .motivos{display:grid;gap:8px}
+  .motivos label{display:flex;align-items:center;gap:10px;border:1px solid var(--borde);border-radius:8px;padding:12px 14px;cursor:pointer;font-size:15px}
+  .motivos label:has(input:checked){border-color:var(--rojo);background:#fdecea;font-weight:600}
+  .motivos input{margin:0;transform:scale(1.15)}
+  #boxOtro{display:none;margin-top:10px}
+  #boxOtro input{width:100%;padding:10px;border:1px solid var(--borde);border-radius:7px;font-size:15px;font-family:inherit}
+  .btn{display:block;width:100%;margin-top:14px;border:none;border-radius:8px;padding:14px;font-size:16px;font-weight:600;cursor:pointer;background:var(--rojo);color:#fff}
+  .btn:disabled{opacity:.6;cursor:wait}
+  .msg{padding:14px;border-radius:8px;margin-bottom:14px;display:none}
+  .msg.ok{display:block;background:#e9f7ef;border:1px solid var(--verde);color:var(--verde)}
+  .msg.err{display:block;background:#fdecea;border:1px solid var(--rojo);color:var(--rojo)}
+  pre{background:#1d2733;color:#d6e2f0;padding:12px;border-radius:8px;font-size:12px;overflow:auto}
+</style>
+</head>
+<body>
+<header>
+  <h1>El cliente no compró</h1>
+  <span class="folio" id="hFolio"></span>
+</header>
+<div id="avisoDemo" class="demo" style="display:none"></div>
+
+<main>
+  <div id="msg" class="msg"></div>
+  <div id="contenido">
+    <p class="cli" id="cli"></p>
+    <div class="card">
+      <h2>¿Por qué no compró el cliente?</h2>
+      <div class="motivos" id="motivos"></div>
+      <div id="boxOtro"><input id="otro" placeholder="Escribe el motivo"></div>
+    </div>
+    <button type="button" class="btn" id="enviar">Enviar motivo</button>
+  </div>
+</main>
+
+<script>
+/* ⚠ MODO PRUEBAS: usuario fijo mientras no hay login del portal. Quitar este bloque en producción. */
+window.PYLSA_USUARIO = window.PYLSA_USUARIO || { id_usuario:"prueba-suc", nombre:"Daniel Rodríguez (prueba sucursal)", sucursal:"Tuxtepec 1", id_sucursal:"TUX1", puesto:"Vendedor", correo:"danielrodgar54@gmail.com" };
+</script>
+<script>
+const CONFIG = {
+  ENDPOINT_DATOS: "https://danielrodriguez.app.n8n.cloud/webhook/cot-datos?vista=motivo",       // GET ?folio=... → { folio, cliente:{clave,nombre} }  (opcional)
+  ENDPOINT_RESPUESTA: "https://danielrodriguez.app.n8n.cloud/webhook/cot-evento",   // POST JSON con el motivo
+  MOTIVOS: ["Precio alto","Tiempo de entrega","Compró con la competencia","No había todo el material",
+            "Canceló o pospuso el proyecto","Sin respuesta del cliente","Otro"]
+};
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function obtenerUsuario(){
+  if (window.PYLSA_USUARIO) return window.PYLSA_USUARIO;
+  for (const st of [sessionStorage, localStorage]) { try { const v = st.getItem("pylsa_usuario"); if (v) return JSON.parse(v); } catch(_){} }
+  return null;
+}
+const usuarioReal = obtenerUsuario();
+const USUARIO = usuarioReal || { id_usuario:"demo", nombre:"Juan Pérez", puesto:"Vendedor", sucursal:"Tuxtepec 1", correo:"juan@pylsa.com" };
+const FOLIO = new URLSearchParams(location.search).get("folio") || "COT-DEMO";
+let MODO_DEMO = true;
+
+$("motivos").innerHTML = CONFIG.MOTIVOS.map(m => `<label><input type="radio" name="motivo" value="${esc(m)}"> ${esc(m)}</label>`).join("");
+document.querySelectorAll('input[name="motivo"]').forEach(r => r.addEventListener("change", () => {
+  const otro = r.value === "Otro" && r.checked;
+  $("boxOtro").style.display = document.querySelector('input[name="motivo"]:checked').value === "Otro" ? "block" : "none";
+  if (otro) $("otro").focus();
+}));
+
+function mostrar(tipo, html){ const m = $("msg"); m.className = "msg " + tipo; m.innerHTML = html; window.scrollTo({top:0, behavior:"smooth"}); }
+
+$("enviar").onclick = async () => {
+  const r = document.querySelector('input[name="motivo"]:checked'), motivo = r ? r.value : "";
+  const comentario = motivo === "Otro" ? $("otro").value.trim() : "";
+  if (!motivo) return mostrar("err", "Selecciona el motivo.");
+  if (motivo === "Otro" && !comentario) return mostrar("err", "Escribe el motivo.");
+  const d = new Date(), z = n => String(n).padStart(2,"0");
+  const payload = {
+    tipo_evento: "cotizacion_perdida", folio: FOLIO, motivo, comentario,
+    fecha: `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`, hora: `${z(d.getHours())}:${z(d.getMinutes())}`,
+    usuario: { id_usuario: USUARIO.id_usuario, nombre: USUARIO.nombre, puesto: USUARIO.puesto, sucursal: USUARIO.sucursal, correo: USUARIO.correo },
+    estado_sugerido: "Perdida", enviado_en: d.toISOString()
+  };
+  if (MODO_DEMO){
+    $("contenido").style.display = "none";
+    return mostrar("ok", `✅ (Demo) Se habría enviado así:<pre>${esc(JSON.stringify(payload, null, 2))}</pre>`);
+  }
+  const btn = $("enviar"); btn.disabled = true; btn.textContent = "Enviando…";
+  try{
+    const res = await fetch(CONFIG.ENDPOINT_RESPUESTA, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(payload) });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    $("contenido").style.display = "none";
+    mostrar("ok", "✅ Registrado. Gracias, este dato ayuda a mejorar precios y tiempos.");
+  }catch(e){ mostrar("err", "No se pudo enviar. Inténtalo de nuevo.<br><small>" + esc(e.message) + "</small>"); }
+  finally{ btn.disabled = false; btn.textContent = "Enviar motivo"; }
+};
+
+(async () => {
+  $("hFolio").textContent = FOLIO;
+  let datos = window.PYLSA_MOTIVO || null, demo = false;
+  try{
+    if (!datos && CONFIG.ENDPOINT_DATOS && FOLIO){
+      const r = await fetch(CONFIG.ENDPOINT_DATOS + "&folio=" + encodeURIComponent(FOLIO)); if (r.ok) datos = await r.json();
+    }
+  }catch(_){}
+  if (!datos){ datos = { folio: FOLIO, cliente:{ clave:"004512", nombre:"Constructora del Golfo" } }; demo = true; }
+  if (datos.cliente) $("cli").innerHTML = `Cliente: <b>${esc(datos.cliente.nombre)}</b> · Clave ${esc(datos.cliente.clave)}`;
+  MODO_DEMO = demo || !usuarioReal || !CONFIG.ENDPOINT_RESPUESTA;
+  if (MODO_DEMO){ $("avisoDemo").style.display = "block"; $("avisoDemo").textContent = "Modo demo: no se enviará nada; se mostrarán los datos que se mandarían."; }
+})();
+</script>
+</body>
+</html>
