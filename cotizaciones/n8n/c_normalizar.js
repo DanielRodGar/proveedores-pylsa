@@ -5,4 +5,10 @@ const plantillas = { solicitud_cotizacion: 'correo_compras.html', respuesta_comp
   venta_registrada: 'correo_autorizacion_direccion.html', autorizacion_compra: 'correo_solicitud_compra.html' };
 b.folio = String(b.folio || '').trim().toUpperCase();
 b._plantilla = 'https://raw.githubusercontent.com/DanielRodGar/proveedores-pylsa/main/cotizaciones/' + (plantillas[b.tipo_evento] || 'correo_compras.html');
-return [{ json: b, binary: it.binary }];
+const binary = Object.assign({}, it.binary || {});
+// ⚠ MODO PRUEBAS: adjuntos en base64 dentro del JSON (campo _adjuntos_prueba). Quitar en producción.
+if (Array.isArray(b._adjuntos_prueba)) {
+  for (const a of b._adjuntos_prueba) binary[a.campo] = await this.helpers.prepareBinaryData(Buffer.from(a.base64, 'base64'), a.nombre, a.mime || 'application/pdf');
+  delete b._adjuntos_prueba;
+}
+return [{ json: b, binary }];
