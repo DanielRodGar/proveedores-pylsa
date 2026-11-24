@@ -103,7 +103,7 @@
       </details>
     </div>
   </div>
-  <p class="version">Versión 4</p>
+  <p class="version">Versión 5</p>
 </main>
 
 <div id="capa">
@@ -166,6 +166,7 @@ const ES_SAMSUNG = /SamsungBrowser/i.test(UA);
 const EN_APP = /FBAN|FBAV|Instagram|WhatsApp|Line\/|Telegram/i.test(UA);
 const SITIO = location.hostname;
 
+let detalle = '';
 function fallo(tipo, msg) { const e = new Error(msg); e.tipo = tipo; return e; }
 
 function ubicacion() {
@@ -173,9 +174,9 @@ function ubicacion() {
     if (!navigator.geolocation) return mal(fallo('sin-gps', 'Tu teléfono no permite obtener la ubicación.'));
     navigator.geolocation.getCurrentPosition(
       p => ok(p.coords),
-      e => mal(e.code === 1
+      e => (detalle = `GPS código ${e.code}: ${e.message || 'sin mensaje'}`, mal(e.code === 1
         ? fallo('ubicacion', 'La ubicación está bloqueada para esta página.')
-        : fallo('gps-apagado', 'No se pudo obtener tu ubicación. Revisa que la ubicación del teléfono esté encendida.')),
+        : fallo('gps-apagado', 'No se pudo obtener tu ubicación. Revisa que la ubicación del teléfono esté encendida.'))),
       { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 });
   });
 }
@@ -195,6 +196,12 @@ function pasos(tipo) {
          'Activa <b>Localización</b>.', 'Sal a un lugar abierto y pulsa <b>Reintentar</b>.']
       : ['Desliza desde arriba de la pantalla para abrir el panel rápido.',
          'Toca el icono <b>Ubicación</b> (📍) para encenderla.', 'Pulsa <b>Reintentar</b>.'];
+  } else if (ES_IOS && tipo !== 'camara') {
+    titulo = 'El iPhone no deja usar la ubicación';
+    lista = ['Abre <b>Ajustes</b> → <b>Privacidad y seguridad</b> → <b>Localización</b> y actívala (verde).',
+             `En esa misma lista entra en <b>${/CriOS/.test(UA) ? 'Chrome' : 'Sitios web de Safari'}</b> y elige <b>"Al usar la app"</b>. Activa también <b>Ubicación exacta</b>.`,
+             'Si las opciones salen en gris: <b>Ajustes</b> → <b>Tiempo en pantalla</b> → <b>Restricciones de contenido y privacidad</b> → <b>Localización</b> → <b>Permitir cambios</b>.',
+             'Vuelve aquí y pulsa <b>Reintentar</b>.'];
   } else if (ES_IOS) {
     titulo = `${que} bloqueada en Safari`;
     lista = ['Toca <b>aA</b> (a la izquierda de la dirección, arriba o abajo de la pantalla).',
@@ -208,7 +215,7 @@ function pasos(tipo) {
              'Pulsa <b>Reintentar</b>.'];
     extra = `Si ya dice "Permitir" y sigue fallando: <b>Ajustes</b> del teléfono → <b>Aplicaciones</b> → <b>${ES_SAMSUNG ? 'Samsung Internet' : 'Chrome'}</b> → <b>Permisos</b> → <b>${que}</b> → <b>"Permitir solo con la app en uso"</b>.`;
   }
-  return `<div class="guia"><b class="t">${titulo}</b><ol>${lista.map(l => `<li>${l}</li>`).join('')}</ol>${extra ? `<p style="margin:0 0 10px;font-size:13px">${extra}</p>` : ''}<button class="secundario" onclick="location.reload()">Reintentar</button></div>`;
+  return `<div class="guia"><b class="t">${titulo}</b><ol>${lista.map(l => `<li>${l}</li>`).join('')}</ol>${extra ? `<p style="margin:0 0 10px;font-size:13px">${extra}</p>` : ''}<button class="secundario" onclick="location.reload()">Reintentar</button>${detalle ? `<p style="margin:10px 0 0;font-size:11px;color:#8a8a8a">Detalle: ${esc(detalle)} · ${esc(ES_IOS ? 'iPhone' : 'Android')} · ${esc(/CriOS/.test(UA) ? 'Chrome' : /Safari/.test(UA) ? 'Safari' : 'otro')}</p>` : ''}</div>`;
 }
 
 async function pedirPermisos() {
