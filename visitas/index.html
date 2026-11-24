@@ -66,8 +66,8 @@
   <div id="app" style="display:none">
     <div class="tarjeta" id="permisos" style="display:none">
       <h2>Antes de empezar</h2>
-      <p style="margin:0 0 12px;font-size:14px">Para registrar visitas necesitas permitir la <b>ubicación</b> y la <b>cámara</b>. Pulsa el botón y elige <b>"Permitir"</b> en cada aviso.</p>
-      <button class="primario" id="btnPermisos">📍 Activar ubicación y cámara</button>
+      <p style="margin:0 0 12px;font-size:14px">Para registrar visitas necesitas permitir la <b>ubicación</b>. Pulsa el botón y elige <b>"Permitir"</b> en el aviso.</p>
+      <button class="primario" id="btnPermisos">📍 Activar ubicación</button>
       <div id="guia"></div>
     </div>
 
@@ -103,18 +103,10 @@
       </details>
     </div>
   </div>
-  <p class="version">Versión 5</p>
+  <p class="version">Versión 6</p>
 </main>
 
-<div id="capa">
-  <div class="titulo" id="capaTitulo">Toma la foto del cliente</div>
-  <div class="marco"><video id="video" playsinline autoplay muted></video></div>
-  <div class="aviso">También puedes tocar la imagen para tomar la foto</div>
-  <div class="controles">
-    <button id="cancelar">Cancelar</button>
-    <button id="disparo">Tomar foto</button>
-  </div>
-</div>
+<input type="file" id="archivo" accept="image/*" capture="environment" style="display:none">
 <canvas id="lienzo" style="display:none"></canvas>
 
 <script>
@@ -222,55 +214,39 @@ async function pedirPermisos() {
   $('btnPermisos').disabled = true; $('guia').innerHTML = '<div class="estado info">Elige "Permitir" en el aviso de ubicación…</div>';
   try {
     await ubicacion();
-    $('guia').innerHTML = '<div class="estado info">Ahora elige "Permitir" en el aviso de la cámara…</div>';
-    let s;
-    try { s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false }); }
-    catch (e) { throw fallo('camara', 'La cámara está bloqueada.'); }
-    s.getTracks().forEach(t => t.stop());
     $('permisos').style.display = 'none';
-    estado('estadoLlegada', 'ok', 'Listo: ubicación y cámara activadas. Ya puedes registrar visitas.');
+    estado('estadoLlegada', 'ok', 'Listo: ubicación activada. Ya puedes registrar visitas.');
   } catch (e) {
     $('guia').innerHTML = pasos(e.tipo || 'ubicacion');
   } finally { $('btnPermisos').disabled = false; }
 }
 
 async function revisarPermisos() {
-  let geo = 'prompt', cam = 'prompt';
+  let geo = 'prompt';
   try { geo = (await navigator.permissions.query({ name: 'geolocation' })).state; } catch (e) {}
-  try { cam = (await navigator.permissions.query({ name: 'camera' })).state; } catch (e) {}
-  if (geo === 'granted' && (cam === 'granted' || ES_IOS)) return;
+  if (geo === 'granted') { $('permisos').style.display = 'none'; return; }
   $('permisos').style.display = 'block';
   if (EN_APP) $('guia').innerHTML = pasos('app');
   else if (geo === 'denied') $('guia').innerHTML = pasos('ubicacion');
-  else if (cam === 'denied') $('guia').innerHTML = pasos('camara');
 }
 $('btnPermisos').onclick = pedirPermisos;
 
-let flujo = null;
-async function abrirCamara(titulo) {
-  if (!navigator.mediaDevices?.getUserMedia) throw new Error('Tu navegador no permite usar la cámara. Abre el enlace en Chrome o Safari.');
-  try {
-    flujo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 } }, audio: false });
-  } catch (e) {
-    throw fallo('camara', 'La cámara está bloqueada.');
-  }
-  $('capaTitulo').textContent = titulo;
-  $('video').srcObject = flujo;
-  $('capa').style.display = 'flex';
+function leerImagen(file) {
   return new Promise((ok, mal) => {
-    $('disparo').onclick = () => ok(true);
-    $('video').onclick = () => { if (!$('disparo').disabled) ok(true); };
-    $('cancelar').onclick = () => mal(new Error('cancelado'));
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => { ok(img); setTimeout(() => URL.revokeObjectURL(url), 1000); };
+    img.onerror = () => mal(new Error('No se pudo leer la foto. Vuelve a tomarla.'));
+    img.src = url;
   });
 }
-function cerrarCamara() { $('capa').style.display = 'none'; if (flujo) flujo.getTracks().forEach(t => t.stop()); flujo = null; }
 
-function capturar(coords, texto) {
-  const v = $('video'), c = $('lienzo');
-  const escala = Math.min(1, 1280 / Math.max(v.videoWidth, v.videoHeight));
-  c.width = Math.round(v.videoWidth * escala); c.height = Math.round(v.videoHeight * escala);
+function sellar(img, coords, texto) {
+  const c = $('lienzo');
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const escala = Math.min(1, 1280 / Math.max(w, h));
+  c.width = Math.round(w * escala); c.height = Math.round(h * escala);
   const g = c.getContext('2d');
-  g.drawImage(v, 0, 0, c.width, c.height);
+  g.drawImage(img, 0, 0, c.width, c.height);
   const lineas = [
     `${datos.vendedor} · ${texto}`,
     new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
@@ -285,36 +261,73 @@ function capturar(coords, texto) {
   return c.toDataURL('image/jpeg', 0.72);
 }
 
-async function registrar(tipo, idVisita, cliente) {
+let pendiente = null;
+const caja = 'estadoLlegada';
+
+// Paso 1: al tocar el botón se abre la cámara del teléfono (sin permisos del navegador)
+function registrar(tipo, idVisita, cliente) {
   if (ocupado) return;
-  const caja = 'estadoLlegada';
-  const datosForm = { cliente: $('cliente').value.trim(), motivo: $('motivo').value, comentario: $('comentario').value.trim() };
-  if (tipo === 'LLEGADA' && datosForm.cliente.length < 3) return estado(caja, 'mal', 'Escribe el nombre del cliente o prospecto.');
+  const form = { cliente: $('cliente').value.trim(), motivo: $('motivo').value, comentario: $('comentario').value.trim() };
+  if (tipo === 'LLEGADA' && form.cliente.length < 3) return estado(caja, 'mal', 'Escribe el nombre del cliente o prospecto (mínimo 3 letras).');
+  pendiente = { tipo, idVisita: idVisita || '', cliente: tipo === 'LLEGADA' ? form.cliente : cliente, form };
+  estado(caja, 'info', 'Toma la foto con la cámara…');
+  $('archivo').value = '';
+  $('archivo').click();
+}
+
+// Paso 2: con la foto tomada, se obtiene el GPS y se envía
+$('archivo').onchange = async () => {
+  const file = $('archivo').files[0];
+  if (!file || !pendiente) return estado(caja, '', '');
+  const edadMin = (Date.now() - (file.lastModified || 0)) / 60000;
+  if (edadMin > 5) return estado(caja, 'mal', 'La foto debe tomarse en este momento con la cámara. No se aceptan fotos guardadas.');
   ocupado = true; $('btnLlegada').disabled = true;
   try {
+    const img = await leerImagen(file);
+    pendiente.t0 = Date.now();
     estado(caja, 'info', 'Obteniendo tu ubicación…');
-    const coords = await ubicacion();
-    estado(caja, 'info', 'Abriendo la cámara…');
-    await abrirCamara(tipo === 'LLEGADA' ? `Llegada: ${datosForm.cliente}` : `Salida: ${cliente}`);
-    const foto = capturar(coords, tipo === 'LLEGADA' ? `Llegada · ${datosForm.cliente}` : `Salida · ${cliente}`);
-    cerrarCamara();
+    let coords = null;
+    try { coords = await ubicacion(); }
+    catch (e) {
+      ocupado = false; $('btnLlegada').disabled = false;
+      pendiente.img = img; pendiente.detalle = detalle || e.message;
+      $(caja).innerHTML = `<div class="estado mal">${esc(e.message)} Sin ubicación no se puede registrar la visita.</div>` + pasos(e.tipo || 'ubicacion') +
+        `<div style="margin-top:10px"><button class="primario" id="btnReintentaGps">📍 Ya lo activé: reintentar ubicación</button></div>`;
+      $('btnReintentaGps').onclick = async () => {
+        if ((Date.now() - pendiente.t0) / 60000 > 10) return estado(caja, 'mal', 'Pasó demasiado tiempo. Vuelve a tomar la foto.');
+        try { estado(caja, 'info', 'Obteniendo tu ubicación…'); await enviar(await ubicacion()); }
+        catch (e2) { $(caja).innerHTML = `<div class="estado mal">${esc(e2.message)}</div>` + pasos(e2.tipo || 'ubicacion'); }
+      };
+      return;
+    }
+    pendiente.img = img;
+    await enviar(coords);
+  } catch (e) {
+    estado(caja, 'mal', e.message);
+  } finally { ocupado = false; $('btnLlegada').disabled = false; }
+};
+
+async function enviar(coords) {
+  const p = pendiente; if (!p || !p.img || !coords) return;
+  ocupado = true; $('btnLlegada').disabled = true;
+  try {
     estado(caja, 'info', 'Enviando registro…');
+    const foto = sellar(p.img, coords, `${p.tipo === 'LLEGADA' ? 'Llegada' : 'Salida'} · ${p.cliente}`);
     const cuerpo = {
-      codigo, tipo, id_visita: idVisita || '', ...(tipo === 'LLEGADA' ? datosForm : {}),
-      lat: coords.latitude, lng: coords.longitude, precision: coords.accuracy,
+      codigo, tipo: p.tipo, id_visita: p.idVisita, ...(p.tipo === 'LLEGADA' ? p.form : {}),
       foto, origen_foto: 'camara', hora_telefono: new Date().toISOString(),
+      lat: coords.latitude, lng: coords.longitude, precision: coords.accuracy,
     };
     const r = await fetch(`${API}/visitas-registro`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) });
     const res = await r.json();
     if (!res.ok) throw new Error(res.error || 'No se pudo registrar.');
-    if (tipo === 'LLEGADA') { $('cliente').value = ''; $('comentario').value = ''; }
-    estado(caja, 'ok', `${tipo === 'LLEGADA' ? 'Llegada' : 'Salida'} registrada a las ${res.hora.slice(0, 5)}. Recuerda registrar la salida al terminar.`.replace(tipo === 'SALIDA' ? ' Recuerda registrar la salida al terminar.' : '§', ''));
+    if (p.tipo === 'LLEGADA') { $('cliente').value = ''; $('comentario').value = ''; }
+    pendiente = null;
+    estado(caja, 'ok', `${p.tipo === 'LLEGADA' ? 'Llegada' : 'Salida'} registrada a las ${String(res.hora).slice(0, 5)}` +
+      (p.tipo === 'LLEGADA' ? '. Al terminar, registra la salida.' : '.'));
     await cargar();
   } catch (e) {
-    cerrarCamara();
-    if (e.message === 'cancelado') estado(caja, '', '');
-    else if (e.tipo) { $(caja).innerHTML = `<div class="estado mal">${esc(e.message)}</div>` + pasos(e.tipo); }
-    else estado(caja, 'mal', e.message);
+    estado(caja, 'mal', e.message);
   } finally { ocupado = false; $('btnLlegada').disabled = false; }
 }
 
