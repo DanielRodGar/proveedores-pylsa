@@ -49,6 +49,10 @@
   #previa { width:100%; border-radius:10px; margin-top:10px; display:none; }
   #error { display:none; }
   details summary { cursor:pointer; color:var(--azul2); font-weight:600; font-size:14px; }
+  .guia { background:#FFF7E6; border:1px solid #F3D9A4; border-radius:10px; padding:12px 14px; margin-top:12px; font-size:14px; }
+  .guia b.t { display:block; color:#8A5A00; margin-bottom:6px; }
+  .guia ol { margin:6px 0 10px; padding-left:20px; }
+  .guia li { margin:4px 0; }
 </style>
 </head>
 <body>
@@ -60,6 +64,13 @@
   <div id="error" class="tarjeta"><div class="estado mal" id="errorTxt"></div></div>
 
   <div id="app" style="display:none">
+    <div class="tarjeta" id="permisos" style="display:none">
+      <h2>Antes de empezar</h2>
+      <p style="margin:0 0 12px;font-size:14px">Para registrar visitas necesitas permitir la <b>ubicación</b> y la <b>cámara</b>. Pulsa el botón y elige <b>"Permitir"</b> en cada aviso.</p>
+      <button class="primario" id="btnPermisos">📍 Activar ubicación y cámara</button>
+      <div id="guia"></div>
+    </div>
+
     <div class="tarjeta">
       <div class="contador"><b id="nHoy">0</b><span>visitas hoy · mínimo <span id="nMin">0</span></span></div>
       <div class="barra"><i id="barra"></i></div>
@@ -92,7 +103,7 @@
       </details>
     </div>
   </div>
-  <p class="version">Versión 3</p>
+  <p class="version">Versión 4</p>
 </main>
 
 <div id="capa">
@@ -126,6 +137,7 @@ async function cargar() {
   $('quien').textContent = `${datos.vendedor} · ${datos.sucursal}`;
   $('app').style.display = 'block';
   pintar();
+  revisarPermisos();
 }
 
 function pintar() {
@@ -148,17 +160,84 @@ function pintar() {
     : '<p class="vacio">Sin visitas anteriores.</p>';
 }
 
+const UA = navigator.userAgent;
+const ES_IOS = /iPhone|iPad|iPod/i.test(UA);
+const ES_SAMSUNG = /SamsungBrowser/i.test(UA);
+const EN_APP = /FBAN|FBAV|Instagram|WhatsApp|Line\/|Telegram/i.test(UA);
+const SITIO = location.hostname;
+
+function fallo(tipo, msg) { const e = new Error(msg); e.tipo = tipo; return e; }
+
 function ubicacion() {
   return new Promise((ok, mal) => {
-    if (!navigator.geolocation) return mal(new Error('Tu teléfono no permite obtener la ubicación.'));
+    if (!navigator.geolocation) return mal(fallo('sin-gps', 'Tu teléfono no permite obtener la ubicación.'));
     navigator.geolocation.getCurrentPosition(
       p => ok(p.coords),
-      e => mal(new Error(e.code === 1
-        ? 'Debes permitir la ubicación para registrar la visita. Actívala en los ajustes del navegador y recarga.'
-        : 'No se pudo obtener tu ubicación. Sal a un lugar abierto y vuelve a intentarlo.')),
+      e => mal(e.code === 1
+        ? fallo('ubicacion', 'La ubicación está bloqueada para esta página.')
+        : fallo('gps-apagado', 'No se pudo obtener tu ubicación. Revisa que la ubicación del teléfono esté encendida.')),
       { enableHighAccuracy: true, timeout: 25000, maximumAge: 0 });
   });
 }
+
+function pasos(tipo) {
+  const que = tipo === 'camara' ? 'Cámara' : 'Ubicación';
+  let titulo, lista, extra = '';
+  if (EN_APP) {
+    titulo = 'Estás abriendo el enlace dentro de otra app';
+    lista = ['Toca los <b>tres puntos ⋮</b> (o el botón de compartir) arriba a la derecha.',
+             `Elige <b>"Abrir en ${ES_IOS ? 'Safari' : 'Chrome'}"</b> o "Abrir en el navegador".`,
+             'Ahí vuelve a pulsar el botón y elige <b>"Permitir"</b>.'];
+  } else if (tipo === 'gps-apagado') {
+    titulo = 'La ubicación del teléfono está apagada';
+    lista = ES_IOS
+      ? ['Abre <b>Ajustes</b> del iPhone → <b>Privacidad y seguridad</b> → <b>Localización</b>.',
+         'Activa <b>Localización</b>.', 'Sal a un lugar abierto y pulsa <b>Reintentar</b>.']
+      : ['Desliza desde arriba de la pantalla para abrir el panel rápido.',
+         'Toca el icono <b>Ubicación</b> (📍) para encenderla.', 'Pulsa <b>Reintentar</b>.'];
+  } else if (ES_IOS) {
+    titulo = `${que} bloqueada en Safari`;
+    lista = ['Toca <b>aA</b> (a la izquierda de la dirección, arriba o abajo de la pantalla).',
+             `Toca <b>Configuración del sitio web</b> → <b>${que}</b> → <b>Permitir</b>.`,
+             'Pulsa <b>Reintentar</b>.'];
+    extra = tipo === 'camara' ? '' : `Si así no aparece: <b>Ajustes</b> del iPhone → <b>Privacidad y seguridad</b> → <b>Localización</b> → <b>Sitios web de Safari</b> → <b>"Al usar la app"</b>.`;
+  } else {
+    titulo = `${que} bloqueada en ${ES_SAMSUNG ? 'Samsung Internet' : 'Chrome'}`;
+    lista = ['Toca el icono que está a la <b>izquierda de la dirección</b> de la página (arriba).',
+             `Toca <b>Permisos</b> (o "Configuración del sitio") → <b>${que}</b> → <b>Permitir</b>.`,
+             'Pulsa <b>Reintentar</b>.'];
+    extra = `Si ya dice "Permitir" y sigue fallando: <b>Ajustes</b> del teléfono → <b>Aplicaciones</b> → <b>${ES_SAMSUNG ? 'Samsung Internet' : 'Chrome'}</b> → <b>Permisos</b> → <b>${que}</b> → <b>"Permitir solo con la app en uso"</b>.`;
+  }
+  return `<div class="guia"><b class="t">${titulo}</b><ol>${lista.map(l => `<li>${l}</li>`).join('')}</ol>${extra ? `<p style="margin:0 0 10px;font-size:13px">${extra}</p>` : ''}<button class="secundario" onclick="location.reload()">Reintentar</button></div>`;
+}
+
+async function pedirPermisos() {
+  $('btnPermisos').disabled = true; $('guia').innerHTML = '<div class="estado info">Elige "Permitir" en el aviso de ubicación…</div>';
+  try {
+    await ubicacion();
+    $('guia').innerHTML = '<div class="estado info">Ahora elige "Permitir" en el aviso de la cámara…</div>';
+    let s;
+    try { s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false }); }
+    catch (e) { throw fallo('camara', 'La cámara está bloqueada.'); }
+    s.getTracks().forEach(t => t.stop());
+    $('permisos').style.display = 'none';
+    estado('estadoLlegada', 'ok', 'Listo: ubicación y cámara activadas. Ya puedes registrar visitas.');
+  } catch (e) {
+    $('guia').innerHTML = pasos(e.tipo || 'ubicacion');
+  } finally { $('btnPermisos').disabled = false; }
+}
+
+async function revisarPermisos() {
+  let geo = 'prompt', cam = 'prompt';
+  try { geo = (await navigator.permissions.query({ name: 'geolocation' })).state; } catch (e) {}
+  try { cam = (await navigator.permissions.query({ name: 'camera' })).state; } catch (e) {}
+  if (geo === 'granted' && (cam === 'granted' || ES_IOS)) return;
+  $('permisos').style.display = 'block';
+  if (EN_APP) $('guia').innerHTML = pasos('app');
+  else if (geo === 'denied') $('guia').innerHTML = pasos('ubicacion');
+  else if (cam === 'denied') $('guia').innerHTML = pasos('camara');
+}
+$('btnPermisos').onclick = pedirPermisos;
 
 let flujo = null;
 async function abrirCamara(titulo) {
@@ -166,7 +245,7 @@ async function abrirCamara(titulo) {
   try {
     flujo = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 } }, audio: false });
   } catch (e) {
-    throw new Error('Debes permitir el uso de la cámara para registrar la visita.');
+    throw fallo('camara', 'La cámara está bloqueada.');
   }
   $('capaTitulo').textContent = titulo;
   $('video').srcObject = flujo;
@@ -207,11 +286,9 @@ async function registrar(tipo, idVisita, cliente) {
   ocupado = true; $('btnLlegada').disabled = true;
   try {
     estado(caja, 'info', 'Obteniendo tu ubicación…');
-    const gps = ubicacion();
+    const coords = await ubicacion();
+    estado(caja, 'info', 'Abriendo la cámara…');
     await abrirCamara(tipo === 'LLEGADA' ? `Llegada: ${datosForm.cliente}` : `Salida: ${cliente}`);
-    $('disparo').disabled = true; $('disparo').textContent = 'Esperando GPS…';
-    let coords;
-    try { coords = await gps; } finally { $('disparo').disabled = false; $('disparo').textContent = 'Tomar foto'; }
     const foto = capturar(coords, tipo === 'LLEGADA' ? `Llegada · ${datosForm.cliente}` : `Salida · ${cliente}`);
     cerrarCamara();
     estado(caja, 'info', 'Enviando registro…');
@@ -228,7 +305,9 @@ async function registrar(tipo, idVisita, cliente) {
     await cargar();
   } catch (e) {
     cerrarCamara();
-    estado(caja, e.message === 'cancelado' ? '' : 'mal', e.message === 'cancelado' ? '' : e.message);
+    if (e.message === 'cancelado') estado(caja, '', '');
+    else if (e.tipo) { $(caja).innerHTML = `<div class="estado mal">${esc(e.message)}</div>` + pasos(e.tipo); }
+    else estado(caja, 'mal', e.message);
   } finally { ocupado = false; $('btnLlegada').disabled = false; }
 }
 
