@@ -78,6 +78,8 @@
 
     <div class="tarjeta" id="formLlegada">
       <h2>Nueva visita: registrar llegada</h2>
+      <div id="avisoAbierta"></div>
+      <div id="camposLlegada">
       <label for="cliente">Cliente o prospecto</label>
       <input id="cliente" autocomplete="off" placeholder="Nombre del negocio">
       <label for="motivo">Motivo</label>
@@ -88,6 +90,7 @@
       <label for="comentario">Comentario (opcional)</label>
       <textarea id="comentario" placeholder="Qué se habló, qué se ofreció…"></textarea>
       <div style="margin-top:14px"><button class="primario" id="btnLlegada">📷 Foto y registrar llegada</button></div>
+      </div>
       <div id="estadoLlegada"></div>
     </div>
 
@@ -103,7 +106,7 @@
       </details>
     </div>
   </div>
-  <p class="version">Versión 6</p>
+  <p class="version">Versión 7</p>
 </main>
 
 <input type="file" id="archivo" accept="image/*" capture="environment" style="display:none">
@@ -145,6 +148,13 @@ function pintar() {
       : `<button class="salida" data-id="${esc(v.id)}" data-cli="${esc(v.cliente)}">Registrar salida</button>`}</div>`).join('')
     : '<p class="vacio">Aún no has registrado visitas hoy.</p>';
   document.querySelectorAll('.salida').forEach(b => b.onclick = () => registrar('SALIDA', b.dataset.id, b.dataset.cli));
+  const abierta = hoy.find(v => v.llegada && !v.salida);
+  $('camposLlegada').style.display = abierta ? 'none' : 'block';
+  $('avisoAbierta').innerHTML = abierta
+    ? `<div class="estado mal" style="margin-top:0">Tienes abierta la visita a <b>${esc(abierta.cliente)}</b> (llegada ${esc(abierta.llegada)}). Registra su salida para poder iniciar otra.</div>
+       <div style="margin-top:12px"><button class="salida" style="width:100%;padding:14px;font-size:16px" id="btnSalidaAbierta">📷 Registrar salida de ${esc(abierta.cliente)}</button></div>`
+    : '';
+  if (abierta) $('btnSalidaAbierta').onclick = () => registrar('SALIDA', abierta.id, abierta.cliente);
   const h = datos.historial || [];
   $('listaHist').innerHTML = h.length ? h.map(v => `
     <div class="visita"><div><div class="cli">${esc(v.cliente)}</div>
