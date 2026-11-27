@@ -138,7 +138,7 @@
       </details>
     </div>
   </div>
-  <p class="version">Versión 9</p>
+  <p class="version">Versión 10</p>
 </main>
 
 <input type="file" id="archivo" accept="image/*" capture="environment" style="display:none">
@@ -276,6 +276,19 @@ async function revisarPermisos() {
 }
 $('btnPermisos').onclick = pedirPermisos;
 
+function esCapturaDePantalla(img) {
+  const dpr = window.devicePixelRatio || 1;
+  const a = Math.round(screen.width * dpr), b = Math.round(screen.height * dpr);
+  const w = img.naturalWidth, h = img.naturalHeight;
+  return (Math.abs(w - a) <= 2 && Math.abs(h - b) <= 2) || (Math.abs(w - b) <= 2 && Math.abs(h - a) <= 2);
+}
+async function tieneDatosDeCamara(file) {
+  try {
+    const buf = new Uint8Array(await file.slice(0, 131072).arrayBuffer());
+    const t = new TextDecoder('latin1').decode(buf);
+    return t.includes('Exif') || /heic|heif|ftyp/i.test(t.slice(0, 64));
+  } catch (e) { return true; }
+}
 function leerImagen(file) {
   return new Promise((ok, mal) => {
     const url = URL.createObjectURL(file), img = new Image();
@@ -350,9 +363,14 @@ $('archivo').onchange = async () => {
   if (!file || !pendiente) return estado(caja, '', '');
   const edadMin = (Date.now() - (file.lastModified || 0)) / 60000;
   if (edadMin > 5) return estado(caja, 'mal', 'La foto debe tomarse en este momento con la cámara. No se aceptan fotos guardadas.');
+  // Las capturas de pantalla son PNG/WebP; las fotos de cámara son JPEG o HEIC
+  if (/png|webp|gif|bmp/i.test(file.type || '') || /\.(png|webp|gif|bmp)$/i.test(file.name || ''))
+    return estado(caja, 'mal', 'No se aceptan capturas de pantalla. Toma la foto con la cámara.');
   ocupado = true; $('btnLlegada').disabled = true;
   try {
     const img = await leerImagen(file);
+    if (esCapturaDePantalla(img)) throw new Error('No se aceptan capturas de pantalla. Toma la foto con la cámara.');
+    if (!(await tieneDatosDeCamara(file))) pendiente.sinExif = true;
     pendiente.t0 = Date.now();
     estado(caja, 'info', 'Obteniendo tu ubicación…');
     let coords = null;
@@ -385,7 +403,7 @@ async function enviar(coords) {
     const cuerpo = {
       codigo, tipo: p.tipo, id_visita: p.idVisita,
       ...(p.tipo === 'LLEGADA' ? p.form : { comentario: p.comentarioSalida, ...(p.prospecto ? { prospecto: p.prospecto } : {}) }),
-      foto, origen_foto: 'camara', hora_telefono: new Date().toISOString(),
+      foto, origen_foto: p.sinExif ? 'sin_datos_camara' : 'camara', hora_telefono: new Date().toISOString(),
       lat: coords.latitude, lng: coords.longitude, precision: coords.accuracy,
     };
     const r = await fetch(`${API}/visitas-registro`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) });
