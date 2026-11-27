@@ -105,7 +105,7 @@
       <input id="pPuesto" autocomplete="off" placeholder="Dueño, encargado, compras…">
       <label for="pTelefono">Teléfono (10 dígitos) *</label>
       <input id="pTelefono" type="tel" inputmode="numeric" autocomplete="off" placeholder="2291234567">
-      <label for="pCorreo">Correo *</label>
+      <label for="pCorreo">Correo</label>
       <input id="pCorreo" type="email" autocomplete="off" placeholder="correo@empresa.com">
       <label for="pGiro">Giro del negocio *</label>
       <select id="pGiro">
@@ -141,7 +141,7 @@
       </details>
     </div>
   </div>
-  <p class="version">Versión 12</p>
+  <p class="version">Versión 13</p>
 </main>
 
 <input type="file" id="archivo" accept="image/*" capture="environment" style="display:none">
@@ -327,6 +327,14 @@ let caja = 'estadoLlegada';
 
 // Paso 1: al tocar el botón se abre la cámara del teléfono (sin permisos del navegador)
 let salidaProspecto = null;
+function telefonoSospechoso(t) {
+  if (/^[01]/.test(t)) return true;                       // en México no empiezan por 0 ni 1
+  if (/^(\d)\1+$/.test(t)) return true;                    // 5555555555
+  if ('01234567890123456789'.includes(t) || '98765432109876543210'.includes(t)) return true; // seguidos
+  if (/(\d)\1{5,}/.test(t)) return true;                   // 6 o más dígitos iguales seguidos
+  if (/^(\d{2})\1{4}$/.test(t) || /^(\d{5})\1$/.test(t)) return true; // 1212121212, 1234512345
+  return false;
+}
 function salida(v) {
   if (!v) return;
   salidaProspecto = v;
@@ -350,8 +358,9 @@ $('btnProspecto').onclick = () => {
     giro: $('pGiro').value, interes: $('pInteres').value.trim(), siguiente: $('pSiguiente').value,
   };
   if (p.contacto.length < 3) return estado('estadoProspecto', 'mal', 'Escribe el nombre de la persona que atendiste.');
-  if (p.telefono.length < 10) return estado('estadoProspecto', 'mal', 'Escribe el teléfono a 10 dígitos.');
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(p.correo)) return estado('estadoProspecto', 'mal', 'Escribe un correo válido del prospecto.');
+  if (p.telefono.length !== 10) return estado('estadoProspecto', 'mal', 'Escribe el teléfono a 10 dígitos, sin lada internacional.');
+  if (telefonoSospechoso(p.telefono)) return estado('estadoProspecto', 'mal', 'Ese teléfono no parece real. Escribe el número correcto del prospecto.');
+  if (p.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(p.correo)) return estado('estadoProspecto', 'mal', 'El correo no es válido. Corrígelo o déjalo vacío.');
   if (!p.giro) return estado('estadoProspecto', 'mal', 'Selecciona el giro del negocio.');
   if (comentario.length < 10) return estado('estadoProspecto', 'mal', 'Escribe un comentario de la visita (mínimo 10 letras).');
   registrar('SALIDA', salidaProspecto.id, salidaProspecto.cliente, p, comentario);
