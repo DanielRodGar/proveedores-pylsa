@@ -49,6 +49,7 @@
   #previa { width:100%; border-radius:10px; margin-top:10px; display:none; }
   #error { display:none; }
   details summary { cursor:pointer; color:var(--azul2); font-weight:600; font-size:14px; }
+  .instruccion { background:#EEF3F9; border-left:4px solid var(--azul2); border-radius:8px; padding:10px 12px; margin-top:14px; font-size:14px; }
   .guia { background:#FFF7E6; border:1px solid #F3D9A4; border-radius:10px; padding:12px 14px; margin-top:12px; font-size:14px; }
   .guia b.t { display:block; color:#8A5A00; margin-bottom:6px; }
   .guia ol { margin:6px 0 10px; padding-left:20px; }
@@ -87,16 +88,17 @@
         <option>Venta</option><option>Seguimiento de cotización</option><option>Cobranza</option>
         <option>Prospección</option><option>Entrega / incidencia</option><option>Otro</option>
       </select>
-      <label for="comentario">Comentario (opcional)</label>
-      <textarea id="comentario" placeholder="Qué se habló, qué se ofreció…"></textarea>
-      <div style="margin-top:14px"><button class="primario" id="btnLlegada">📷 Foto y registrar llegada</button></div>
+      <div class="instruccion">🤳 <b>Foto de llegada:</b> tómate una <b>selfie con la fachada del negocio</b> de fondo. Que se vea tu cara y el letrero o la entrada.</div>
+      <div style="margin-top:14px"><button class="primario" id="btnLlegada">🤳 Selfie en la fachada y registrar llegada</button></div>
       </div>
       <div id="estadoLlegada"></div>
     </div>
 
     <div class="tarjeta" id="formProspecto" style="display:none">
-      <h2>Datos del prospecto: <span id="pEmpresa"></span></h2>
-      <p style="margin:0 0 4px;font-size:13px;color:var(--gris)">Llena los datos de la persona que atendiste y después toma la foto de salida.</p>
+      <h2>Cerrar visita: <span id="pEmpresa"></span></h2>
+      <p style="margin:0 0 4px;font-size:13px;color:var(--gris)">Cuenta cómo fue la visita y después toma la foto de salida.</p>
+      <div id="camposProspecto">
+      <h3 style="font-size:15px;color:var(--azul);margin:14px 0 0">Datos del prospecto</h3>
       <label for="pContacto">Nombre de la persona *</label>
       <input id="pContacto" autocomplete="off" placeholder="Nombre y apellido">
       <label for="pPuesto">Puesto</label>
@@ -117,10 +119,11 @@
         <option>Enviar cotización</option><option>Volver a visitar</option><option>Llamar por teléfono</option>
         <option>Ya hizo pedido</option><option>No le interesa</option>
       </select>
-      <label for="pComentario">Comentario</label>
-      <textarea id="pComentario" placeholder="Cualquier otro detalle"></textarea>
+      </div>
+      <label for="pComentario">Comentario de la visita *</label>
+      <textarea id="pComentario" placeholder="Qué se habló, qué se ofreció, cómo quedó…"></textarea>
       <div style="margin-top:14px;display:flex;gap:10px">
-        <button class="secundario" id="btnCancelaProspecto" style="flex:0 0 35%">Cancelar</button>
+        <button class="secundario" id="btnCancelaProspecto" style="flex:0 0 35%">Volver</button>
         <button class="primario" id="btnProspecto">📷 Foto y registrar salida</button>
       </div>
       <div id="estadoProspecto"></div>
@@ -138,7 +141,7 @@
       </details>
     </div>
   </div>
-  <p class="version">Versión 10</p>
+  <p class="version">Versión 11</p>
 </main>
 
 <input type="file" id="archivo" accept="image/*" capture="environment" style="display:none">
@@ -326,16 +329,21 @@ let caja = 'estadoLlegada';
 let salidaProspecto = null;
 function salida(v) {
   if (!v) return;
-  if (/prospecci/i.test(v.motivo || '')) {
-    salidaProspecto = v;
-    $('pEmpresa').textContent = v.cliente;
-    $('formProspecto').style.display = 'block';
-    estado('estadoProspecto', '', '');
-    $('formProspecto').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  } else registrar('SALIDA', v.id, v.cliente);
+  salidaProspecto = v;
+  $('pEmpresa').textContent = v.cliente;
+  $('camposProspecto').style.display = /prospecci/i.test(v.motivo || '') ? 'block' : 'none';
+  $('formProspecto').style.display = 'block';
+  estado('estadoProspecto', '', '');
+  $('formProspecto').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 $('btnCancelaProspecto').onclick = () => { $('formProspecto').style.display = 'none'; salidaProspecto = null; };
 $('btnProspecto').onclick = () => {
+  const comentario = $('pComentario').value.trim();
+  const esProspecto = /prospecci/i.test(salidaProspecto.motivo || '');
+  if (!esProspecto) {
+    if (comentario.length < 10) return estado('estadoProspecto', 'mal', 'Escribe un comentario de la visita (mínimo 10 letras).');
+    return registrar('SALIDA', salidaProspecto.id, salidaProspecto.cliente, null, comentario);
+  }
   const p = {
     contacto: $('pContacto').value.trim(), puesto: $('pPuesto').value.trim(),
     telefono: $('pTelefono').value.replace(/\D/g, ''), correo: $('pCorreo').value.trim(),
@@ -343,17 +351,19 @@ $('btnProspecto').onclick = () => {
   };
   if (p.contacto.length < 3) return estado('estadoProspecto', 'mal', 'Escribe el nombre de la persona que atendiste.');
   if (p.telefono.length < 10) return estado('estadoProspecto', 'mal', 'Escribe el teléfono a 10 dígitos.');
-  registrar('SALIDA', salidaProspecto.id, salidaProspecto.cliente, p, $('pComentario').value.trim());
+  if (comentario.length < 10) return estado('estadoProspecto', 'mal', 'Escribe un comentario de la visita (mínimo 10 letras).');
+  registrar('SALIDA', salidaProspecto.id, salidaProspecto.cliente, p, comentario);
 };
 
 function registrar(tipo, idVisita, cliente, prospecto, comentarioSalida) {
   if (ocupado) return;
-  caja = prospecto ? 'estadoProspecto' : 'estadoLlegada';
-  const form = { cliente: $('cliente').value.trim(), motivo: $('motivo').value, comentario: $('comentario').value.trim() };
+  caja = tipo === 'SALIDA' ? 'estadoProspecto' : 'estadoLlegada';
+  const form = { cliente: $('cliente').value.trim(), motivo: $('motivo').value };
   if (tipo === 'LLEGADA' && form.cliente.length < 3) return estado(caja, 'mal', 'Escribe el nombre del cliente o prospecto (mínimo 3 letras).');
   pendiente = { tipo, idVisita: idVisita || '', cliente: tipo === 'LLEGADA' ? form.cliente : cliente, form, prospecto: prospecto || null, comentarioSalida: comentarioSalida || '' };
-  estado(caja, 'info', 'Toma la foto con la cámara…');
+  estado(caja, 'info', tipo === 'LLEGADA' ? 'Tómate la selfie con la fachada del negocio de fondo…' : 'Toma la foto de salida…');
   $('archivo').value = '';
+  $('archivo').setAttribute('capture', tipo === 'LLEGADA' ? 'user' : 'environment');
   $('archivo').click();
 }
 
@@ -409,8 +419,8 @@ async function enviar(coords) {
     const r = await fetch(`${API}/visitas-registro`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) });
     const res = await r.json();
     if (!res.ok) throw new Error(res.error || 'No se pudo registrar.');
-    if (p.tipo === 'LLEGADA') { $('cliente').value = ''; $('comentario').value = ''; }
-    if (p.prospecto) {
+    if (p.tipo === 'LLEGADA') { $('cliente').value = ''; }
+    if (p.tipo === 'SALIDA') {
       ['pContacto','pPuesto','pTelefono','pCorreo','pInteres','pComentario'].forEach(k => $(k).value = '');
       $('pGiro').value = ''; $('formProspecto').style.display = 'none'; salidaProspecto = null;
       caja = 'estadoLlegada';
