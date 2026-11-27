@@ -112,6 +112,15 @@
         <option value="">Selecciona…</option><option>Ferretería</option><option>Herrería</option><option>Constructora</option>
         <option>Taller / maquinado</option><option>Industria</option><option>Particular</option><option>Otro</option>
       </select>
+      <h3 style="font-size:15px;color:var(--azul);margin:16px 0 0">Dirección del negocio</h3>
+      <label for="pCalle">Calle *</label>
+      <input id="pCalle" autocomplete="off" placeholder="Av. Ignacio Allende">
+      <div style="display:flex;gap:10px">
+        <div style="flex:1"><label for="pNumero">Número *</label><input id="pNumero" autocomplete="off" placeholder="123 o S/N"></div>
+        <div style="flex:1"><label for="pCP">C.P. *</label><input id="pCP" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="91700"></div>
+      </div>
+      <label for="pColonia">Colonia *</label>
+      <input id="pColonia" autocomplete="off" placeholder="Centro">
       <label for="pInteres">¿Qué le interesa?</label>
       <textarea id="pInteres" placeholder="Productos, medidas, volumen aproximado…"></textarea>
       <label for="pSiguiente">Siguiente paso</label>
@@ -141,7 +150,7 @@
       </details>
     </div>
   </div>
-  <p class="version">Versión 13</p>
+  <p class="version">Versión 14</p>
 </main>
 
 <input type="file" id="archivo" accept="image/*" capture="environment" style="display:none">
@@ -356,12 +365,18 @@ $('btnProspecto').onclick = () => {
     contacto: $('pContacto').value.trim(), puesto: $('pPuesto').value.trim(),
     telefono: $('pTelefono').value.replace(/\D/g, ''), correo: $('pCorreo').value.trim(),
     giro: $('pGiro').value, interes: $('pInteres').value.trim(), siguiente: $('pSiguiente').value,
+    calle: $('pCalle').value.trim(), numero: $('pNumero').value.trim(), colonia: $('pColonia').value.trim(),
+    cp: $('pCP').value.replace(/\D/g, ''),
   };
   if (p.contacto.length < 3) return estado('estadoProspecto', 'mal', 'Escribe el nombre de la persona que atendiste.');
   if (p.telefono.length !== 10) return estado('estadoProspecto', 'mal', 'Escribe el teléfono a 10 dígitos, sin lada internacional.');
   if (telefonoSospechoso(p.telefono)) return estado('estadoProspecto', 'mal', 'Ese teléfono no parece real. Escribe el número correcto del prospecto.');
   if (p.correo && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(p.correo)) return estado('estadoProspecto', 'mal', 'El correo no es válido. Corrígelo o déjalo vacío.');
   if (!p.giro) return estado('estadoProspecto', 'mal', 'Selecciona el giro del negocio.');
+  if (p.calle.length < 3) return estado('estadoProspecto', 'mal', 'Escribe la calle del negocio.');
+  if (!p.numero) return estado('estadoProspecto', 'mal', 'Escribe el número exterior (o S/N si no tiene).');
+  if (p.colonia.length < 3) return estado('estadoProspecto', 'mal', 'Escribe la colonia.');
+  if (!/^\d{5}$/.test(p.cp)) return estado('estadoProspecto', 'mal', 'El código postal debe tener 5 dígitos.');
   if (comentario.length < 10) return estado('estadoProspecto', 'mal', 'Escribe un comentario de la visita (mínimo 10 letras).');
   registrar('SALIDA', salidaProspecto.id, salidaProspecto.cliente, p, comentario);
 };
@@ -432,7 +447,7 @@ async function enviar(coords) {
     if (!res.ok) throw new Error(res.error || 'No se pudo registrar.');
     if (p.tipo === 'LLEGADA') { $('cliente').value = ''; }
     if (p.tipo === 'SALIDA') {
-      ['pContacto','pPuesto','pTelefono','pCorreo','pInteres','pComentario'].forEach(k => $(k).value = '');
+      ['pContacto','pPuesto','pTelefono','pCorreo','pInteres','pComentario','pCalle','pNumero','pColonia','pCP'].forEach(k => $(k).value = '');
       $('pGiro').value = ''; $('formProspecto').style.display = 'none'; salidaProspecto = null;
       caja = 'estadoLlegada';
     }
