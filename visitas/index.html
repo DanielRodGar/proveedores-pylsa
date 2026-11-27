@@ -105,9 +105,9 @@
       <input id="pPuesto" autocomplete="off" placeholder="Dueño, encargado, compras…">
       <label for="pTelefono">Teléfono (10 dígitos) *</label>
       <input id="pTelefono" type="tel" inputmode="numeric" autocomplete="off" placeholder="2291234567">
-      <label for="pCorreo">Correo</label>
+      <label for="pCorreo">Correo *</label>
       <input id="pCorreo" type="email" autocomplete="off" placeholder="correo@empresa.com">
-      <label for="pGiro">Giro del negocio</label>
+      <label for="pGiro">Giro del negocio *</label>
       <select id="pGiro">
         <option value="">Selecciona…</option><option>Ferretería</option><option>Herrería</option><option>Constructora</option>
         <option>Taller / maquinado</option><option>Industria</option><option>Particular</option><option>Otro</option>
@@ -141,7 +141,7 @@
       </details>
     </div>
   </div>
-  <p class="version">Versión 11</p>
+  <p class="version">Versión 12</p>
 </main>
 
 <input type="file" id="archivo" accept="image/*" capture="environment" style="display:none">
@@ -351,6 +351,8 @@ $('btnProspecto').onclick = () => {
   };
   if (p.contacto.length < 3) return estado('estadoProspecto', 'mal', 'Escribe el nombre de la persona que atendiste.');
   if (p.telefono.length < 10) return estado('estadoProspecto', 'mal', 'Escribe el teléfono a 10 dígitos.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(p.correo)) return estado('estadoProspecto', 'mal', 'Escribe un correo válido del prospecto.');
+  if (!p.giro) return estado('estadoProspecto', 'mal', 'Selecciona el giro del negocio.');
   if (comentario.length < 10) return estado('estadoProspecto', 'mal', 'Escribe un comentario de la visita (mínimo 10 letras).');
   registrar('SALIDA', salidaProspecto.id, salidaProspecto.cliente, p, comentario);
 };
