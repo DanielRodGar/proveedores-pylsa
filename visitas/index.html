@@ -138,7 +138,7 @@
       </details>
     </div>
   </div>
-  <p class="version">Versión 8</p>
+  <p class="version">Versión 9</p>
 </main>
 
 <input type="file" id="archivo" accept="image/*" capture="environment" style="display:none">
@@ -161,6 +161,7 @@ async function cargar() {
     datos = await r.json();
   } catch (e) { return error('Sin conexión. Revisa tus datos móviles y recarga la página.'); }
   if (!datos.ok) return error(datos.error || 'No se pudo cargar.');
+  if (!ES_MOVIL) return error('Esta página solo funciona desde el celular. Abre tu enlace en tu teléfono para registrar visitas.');
   $('quien').textContent = `${datos.vendedor} · ${datos.sucursal}`;
   $('app').style.display = 'block';
   pintar();
@@ -195,6 +196,8 @@ function pintar() {
 }
 
 const UA = navigator.userAgent;
+const ES_MOVIL = (navigator.userAgentData && navigator.userAgentData.mobile) || /Android|iPhone|iPod|iPad|Mobile/i.test(UA)
+  || (/Macintosh/.test(UA) && navigator.maxTouchPoints > 1);
 const ES_IOS = /iPhone|iPad|iPod/i.test(UA);
 const ES_SAMSUNG = /SamsungBrowser/i.test(UA);
 const EN_APP = /FBAN|FBAV|Instagram|WhatsApp|Line\/|Telegram/i.test(UA);
